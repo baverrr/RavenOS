@@ -15,6 +15,9 @@ dark glass theme across the system.
 > **`vendor/ravenos`**, not on its own. It needs the amazon-oss device trees next to it.
 
 <p align="center">
+  <img src="docs/images/home.png" width="98%" alt="Home screen with the clock, weather and shortcuts">
+</p>
+<p align="center">
   <img src="docs/images/settings.png" width="49%" alt="Settings in the glass theme">
   <img src="docs/images/apps.png" width="49%" alt="All apps with themed icons">
   <img src="docs/images/speaker.png" width="49%" alt="Speaker tuning in Sound settings">
@@ -71,8 +74,9 @@ These steps are for a Linux PC (Ubuntu or Debian) with about 300 GB free and 16 
 
 ## Features
 
-- **Home screen (RavenHome):** a big clock over a looping video background, weather, alarms and
-  timers, a night mode, and a device health page.
+- **Home screen (RavenHome):** a clock over a looping video background of your choice. Tap it for
+  the big clock, weather, alarms, timers, now playing and shortcuts. There's also a night mode
+  and a device health page.
 - **Bluetooth speaker:** the Echo shows up as "RavenOS". The now-playing card shows the phone's
   album art.
 - **Speaker tuning:** an EQ and limiter for the built-in speaker, with Bass, Mids and Treble
@@ -267,9 +271,13 @@ flowchart LR
 - **License:** RavenOS's own code, overlays and patches are under the
   [Apache License 2.0](LICENSE), like the AOSP and LineageOS code they change. The bundled apps
   keep their own licenses:
-  - Dicio: GPL-3.0.
-  - RHVoice: LGPL-2.1 and GPL.
+  - Dicio: GPL-3.0. The fork is upstream [Dicio](https://github.com/Stypox/dicio-android) plus
+    `apps/Dicio/patches`, rebuilt with `apps/Dicio/build-dicio.sh`.
+  - RHVoice: LGPL-2.1 and GPL. It's the [F-Droid build](https://f-droid.org/packages/com.github.olga_yakovleva.rhvoice.android/)
+    of [RHVoice](https://github.com/RHVoice/RHVoice).
   - The openWakeWord tooling: Apache 2.0.
+  - The IBM Plex Sans fonts: SIL Open Font License 1.1
+    ([apps/RavenHome/FONTS-LICENSE.txt](apps/RavenHome/FONTS-LICENSE.txt)).
 - **Privacy:** RavenOS has no accounts, analytics or cloud services. Voice is processed entirely
-  on the Echo. Weather, from Open-Meteo, is the only
-  regular internet request.
+  on the Echo. Weather, from Open-Meteo, is the only regular internet
+  request.
