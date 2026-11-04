@@ -111,9 +111,11 @@ The zip checks that it's on a crown, then writes only the `system` and `boot` pa
 
 - **TWRP:** hold **only volume up** while plugging in the power (or run `boot-recovery.sh` from
   the amonet folder).
-- **RavenOS won't boot:** in TWRP, sideload the plain LineageOS zip
+- **RavenOS won't boot:** in TWRP, sideload a plain LineageOS zip
   (`lineage-18.1-<date>-UNOFFICIAL-crown.zip`). That shows whether the problem is RavenOS's
-  changes or the device support.
+  changes or the device support. `build-ravenos.sh` doesn't make one: build it in a separate
+  sync with only the amazon-oss patches applied (the RavenOS patches change shared sources),
+  with `source build/envsetup.sh && lunch lineage_crown-userdebug && mka bacon`.
 - **Last resort (unbrick):** amonet 2.x exposes the Preloader USB download port. Hold **mic mute +
   volume down** while booting, with USB connected, then use MTKClient. Never write LK, Preloader,
   TZ or TEE1 in this mode; doing so is a hard brick.

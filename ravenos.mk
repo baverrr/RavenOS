@@ -1,5 +1,7 @@
 # RavenOS common configuration.
 
+# Also shown in Settings › About: keep overlay/lineage-sdk/lineage/res/res/values/strings.xml
+# (lineage_version) in step. build-ravenos.sh stops if the two differ.
 RAVENOS_VERSION := 1.1
 
 PRODUCT_PACKAGE_OVERLAYS += vendor/ravenos/overlay

@@ -61,11 +61,15 @@ These steps are for a Linux PC (Ubuntu or Debian) with about 300 GB free and 16 
    bash patches/apply.sh
    bash vendor/ravenos/patches/apply.sh
    ```
+   RavenOS's `apply.sh` skips patches that are already in place, so if one fails you can fix
+   the conflict and run it again.
 3. **Build**
    ```bash
    nice -n 18 ionice -c3 bash vendor/ravenos/build-ravenos.sh
    ```
    This makes `out/target/product/crown/RavenOS-<version>-<date>-crown.zip` and its `.sha256`.
+   The script uses ccache when it's installed (`sudo apt install ccache`) and stops early if a
+   RavenOS patch is missing from the tree, such as after a `repo sync`.
 4. **Flash.** Follow [FLASHING.md](FLASHING.md): unlock with amonet, install TWRP, wipe, then
    sideload the zip.
 5. **First boot.** Open **RHVoice** once and download an English voice so "Hey Raven" can talk.
@@ -88,7 +92,7 @@ These steps are for a Linux PC (Ubuntu or Debian) with about 300 GB free and 16 
   sounds. Every button except Power can be reprogrammed on the Echo, in Settings › Connected
   devices › Remote buttons.
 - **Glass theme:** Settings, Settings search, the keyboard, dialogs, toasts and notifications
-  share one dark glass look, with a touch glow that follows your finger. Eleven colour variants
+  share one dark glass look, with a touch glow that follows your finger. Ten colour variants
   are in [`themes/`](themes); see [THEME.md](THEME.md).
 - **Themed app icons:** every app in All apps, including ones installed later, is redrawn as an
   amber symbol on a dark glass tile.

@@ -6,16 +6,20 @@
 #   bash vendor/ravenos/tools/wakeword/train.sh            # all steps
 #   bash vendor/ravenos/tools/wakeword/train.sh train      # resume from one step
 # Steps: image, data, generate, augment, train, convert. About 22 GB of data goes to $WAKEWORD_DATA
-# (default /mnt/ssd/ravenos-wakeword). The result is copied to
+# (default /mnt/media/ravenos/wakeword). The result is copied to
 # vendor/ravenos/wakeword/hey_raven.tflite.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RAVENOS="$(cd "$HERE/../.." && pwd)"
-DATA="${WAKEWORD_DATA:-/mnt/ssd/ravenos-wakeword}"
+DATA="${WAKEWORD_DATA:-/mnt/media/ravenos/wakeword}"
 IMAGE=ravenos-wakeword-train
 STEPS=(image data generate augment train convert)
 FROM="${1:-image}"
+if [[ " ${STEPS[*]} " != *" $FROM "* ]]; then
+    echo "Unknown step '$FROM'. Steps: ${STEPS[*]}" >&2
+    exit 1
+fi
 
 mkdir -p "$DATA"
 
