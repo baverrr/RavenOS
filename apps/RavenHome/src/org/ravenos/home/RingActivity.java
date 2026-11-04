@@ -1,10 +1,7 @@
 package org.ravenos.home;
 
 import android.app.Activity;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
@@ -16,12 +13,7 @@ public class RingActivity extends Activity {
     private int mKind;
     private int mId;
 
-    private final BroadcastReceiver mEnded = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            finish();
-        }
-    };
+    private final Runnable mEnded = this::finish;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,7 +27,7 @@ public class RingActivity extends Activity {
         getWindow().setAttributes(lp);
         setContentView(R.layout.activity_ring);
         GlowBackdrop.attach(this);
-        registerReceiver(mEnded, new IntentFilter(RingService.ACTION_ENDED));
+        RingService.addEndedListener(mEnded);
         bind(getIntent());
     }
 
@@ -76,7 +68,7 @@ public class RingActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        unregisterReceiver(mEnded);
+        RingService.removeEndedListener(mEnded);
         super.onDestroy();
     }
 }

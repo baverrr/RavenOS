@@ -21,6 +21,8 @@ import android.text.TextUtils;
 import android.util.Log;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 /** Plays an alarm or timer sound in the foreground and shows the ringing screen. */
 public class RingService extends Service {
@@ -37,7 +39,20 @@ public class RingService extends Service {
     static final String ACTION_SNOOZE = "org.ravenos.home.ring.SNOOZE";
     static final String ACTION_ADD_MINUTE = "org.ravenos.home.ring.ADD_MINUTE";
     /** Sent (to this package only) when ringing ends, so the ringing screen closes. */
-    static final String ACTION_ENDED = "org.ravenos.home.ring.ENDED";
+    /**
+     * Ring screens to close when ringing ends. They live in this process, so a plain listener
+     * replaces the broadcast another app could send to close the screen while the sound played.
+     * Main thread only.
+     */
+    private static final List<Runnable> sEndedListeners = new ArrayList<>();
+
+    static void addEndedListener(Runnable listener) {
+        sEndedListeners.add(listener);
+    }
+
+    static void removeEndedListener(Runnable listener) {
+        sEndedListeners.remove(listener);
+    }
 
     private static final String CHANNEL = "ring";
     private static final int NOTIFICATION_ID = 1;
@@ -102,13 +117,16 @@ public class RingService extends Service {
                 finishRinging();
                 break;
             case ACTION_ADD_MINUTE:
+                // The minute goes to the timer on the ring screen; others that rang with it end.
                 Timers.addMinute(this, id);
+                Timers.removeRung(this);
                 finishRinging();
                 break;
             case ACTION_STOP:
             default:
                 if (kind == KIND_TIMER) {
-                    Timers.remove(this, id);
+                    // Stops every timer that rang, as several can ring together.
+                    Timers.removeRung(this);
                 }
                 finishRinging();
                 break;
@@ -230,7 +248,10 @@ public class RingService extends Service {
     private void finishRinging() {
         mHandler.removeCallbacks(mAutoStop);
         stopSound();
-        sendBroadcast(new Intent(ACTION_ENDED).setPackage(getPackageName()));
+        // Copy first: a listener may remove itself as the ring screen finishes.
+        for (Runnable listener : new ArrayList<>(sEndedListeners)) {
+            listener.run();
+        }
         stopForeground(true);
         if (mWakeLock != null && mWakeLock.isHeld()) {
             mWakeLock.release();

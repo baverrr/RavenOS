@@ -72,11 +72,13 @@ final class Background implements TextureView.SurfaceTextureListener {
         public void run() {
             if (isStalled()) {
                 // The decoder can stop without a completion or error callback (seen at the
-                // end of a long video); start the video again instead of freezing.
-                Log.w(TAG, "Video stalled, reopening " + mCurrentVideo);
-                if (mVideoView.isAvailable()) {
-                    openVideo(mVideoView.getSurfaceTexture());
+                // end of a long video). Treat it like a completion: forget the position and move
+                // on, since reopening the same video would replay the stalled stretch.
+                Log.w(TAG, "Video stalled, moving on from " + mCurrentVideo);
+                if (mCurrentVideo != null) {
+                    mPrefs.raw().edit().remove(positionKey(mCurrentVideo)).apply();
                 }
+                nextVideo();
                 return;
             }
             savePosition();

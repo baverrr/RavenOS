@@ -5,6 +5,8 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.SystemClock;
+import android.provider.Settings;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -15,7 +17,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-/** Countdown timers. Several can run at once; the soonest is registered with AlarmManager. */
+/**
+ * Countdown timers. Several can run at once; the soonest that hasn't rung yet is registered with
+ * AlarmManager. A running timer counts down on the elapsed-time clock, so changing the wall clock
+ * doesn't make it ring early or late; the wall-clock end is kept for display and for after a
+ * reboot, when the elapsed clock starts again.
+ */
 final class Timers {
     private static final String TAG = "RavenTimers";
     private static final String PREFS = "timers";
@@ -30,6 +37,12 @@ final class Timers {
         long endAt;
         /** Time left while paused; -1 while running. */
         long pausedLeft = -1;
+        /** SystemClock.elapsedRealtime() end while running, valid only during boot {@link #boot}. */
+        long endElapsed;
+        /** Settings.Global.BOOT_COUNT when endElapsed was set. */
+        int boot = -1;
+        /** Whether it has rung since it was last started, resumed or extended. */
+        boolean rang;
 
         boolean isPaused() {
             return pausedLeft >= 0;
@@ -41,7 +54,8 @@ final class Timers {
 
         JSONObject toJson() throws JSONException {
             return new JSONObject().put("id", id).put("label", label)
-                    .put("duration", durationMs).put("end", endAt).put("paused", pausedLeft);
+                    .put("duration", durationMs).put("end", endAt).put("paused", pausedLeft)
+                    .put("endElapsed", endElapsed).put("boot", boot).put("rang", rang);
         }
 
         static Timer fromJson(JSONObject o) {
@@ -51,6 +65,9 @@ final class Timers {
             t.durationMs = o.optLong("duration");
             t.endAt = o.optLong("end");
             t.pausedLeft = o.optLong("paused", -1);
+            t.endElapsed = o.optLong("endElapsed");
+            t.boot = o.optInt("boot", -1);
+            t.rang = o.optBoolean("rang");
             return t;
         }
     }
@@ -62,12 +79,37 @@ final class Timers {
         return context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
+    private static int bootCount(Context context) {
+        return Settings.Global.getInt(context.getContentResolver(), Settings.Global.BOOT_COUNT, -1);
+    }
+
+    /** Whether the timer's elapsed-clock end belongs to this boot. */
+    private static boolean hasElapsedEnd(Timer t, int boot) {
+        return !t.isPaused() && t.endElapsed > 0 && boot >= 0 && t.boot == boot;
+    }
+
+    /** Sets a running timer to end at {@code endAt} (wall clock) and lets it ring again. */
+    private static void setEnd(Context context, Timer t, long endAt) {
+        t.endAt = endAt;
+        t.endElapsed = SystemClock.elapsedRealtime() + (endAt - System.currentTimeMillis());
+        t.boot = bootCount(context);
+        t.pausedLeft = -1;
+        t.rang = false;
+    }
+
     static List<Timer> load(Context context) {
         List<Timer> out = new ArrayList<>();
+        int boot = bootCount(context);
         try {
             JSONArray arr = new JSONArray(prefs(context).getString(KEY_LIST, "[]"));
             for (int i = 0; i < arr.length(); i++) {
-                out.add(Timer.fromJson(arr.getJSONObject(i)));
+                Timer t = Timer.fromJson(arr.getJSONObject(i));
+                if (hasElapsedEnd(t, boot)) {
+                    // Follow the elapsed clock, so a wall-clock change moves the end with it.
+                    t.endAt = System.currentTimeMillis()
+                            + (t.endElapsed - SystemClock.elapsedRealtime());
+                }
+                out.add(t);
             }
         } catch (JSONException e) {
             Log.w(TAG, "Bad timer list", e);
@@ -107,7 +149,7 @@ final class Timers {
         t.id = next;
         t.label = label == null ? "" : label.trim();
         t.durationMs = durationMs;
-        t.endAt = System.currentTimeMillis() + durationMs;
+        setEnd(context, t, System.currentTimeMillis() + durationMs);
         timers.add(t);
         saveAll(context, timers);
         schedule(context);
@@ -131,7 +173,7 @@ final class Timers {
             if (t.isPaused()) {
                 t.pausedLeft += 60_000L;
             } else {
-                t.endAt = Math.max(t.endAt, now) + 60_000L;
+                setEnd(context, t, Math.max(t.endAt, now) + 60_000L);
             }
         }
         saveAll(context, timers);
@@ -146,11 +188,11 @@ final class Timers {
                 continue;
             }
             if (t.isPaused()) {
-                t.endAt = now + t.pausedLeft;
-                t.pausedLeft = -1;
+                setEnd(context, t, now + t.pausedLeft);
             } else if (t.endAt > now) {
                 t.pausedLeft = t.endAt - now;
                 t.endAt = 0;
+                t.endElapsed = 0;
             }
         }
         saveAll(context, timers);
@@ -166,11 +208,43 @@ final class Timers {
         schedule(context);
     }
 
+    /**
+     * Marks every running timer that has reached its end and hasn't rung as rung, registers the
+     * next one, and returns those that are due, soonest first. Several can be due at once, such
+     * as two timers ending moments apart or after the clock jumped forward.
+     */
+    static List<Timer> takeDue(Context context) {
+        // A little slack, since the alarm may be delivered a moment before the end.
+        long now = System.currentTimeMillis() + 1_000L;
+        List<Timer> timers = load(context);
+        List<Timer> due = new ArrayList<>();
+        for (Timer t : timers) {
+            if (!t.isPaused() && !t.rang && t.endAt <= now) {
+                t.rang = true;
+                due.add(t);
+            }
+        }
+        if (!due.isEmpty()) {
+            saveAll(context, timers);
+        }
+        schedule(context);
+        return due;
+    }
+
+    /** Removes the timers that have rung and not been extended since. */
+    static void removeRung(Context context) {
+        List<Timer> timers = load(context);
+        if (timers.removeIf(t -> !t.isPaused() && t.rang)) {
+            saveAll(context, timers);
+        }
+        schedule(context);
+    }
+
     static void schedule(Context context) {
-        long now = System.currentTimeMillis();
         Timer soonest = null;
         for (Timer t : load(context)) {
-            if (!t.isPaused() && t.endAt > now && (soonest == null || t.endAt < soonest.endAt)) {
+            // A timer whose end already passed without ringing is registered too: it rings now.
+            if (!t.isPaused() && !t.rang && (soonest == null || t.endAt < soonest.endAt)) {
                 soonest = t;
             }
         }
@@ -183,7 +257,12 @@ final class Timers {
         if (soonest == null) {
             am.cancel(operation);
         } else {
-            am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, soonest.endAt, operation);
+            if (hasElapsedEnd(soonest, bootCount(context))) {
+                am.setExactAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                        soonest.endElapsed, operation);
+            } else {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, soonest.endAt, operation);
+            }
         }
     }
 

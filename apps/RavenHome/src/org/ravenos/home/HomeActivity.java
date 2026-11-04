@@ -568,9 +568,7 @@ public class HomeActivity extends Activity {
         String alarmText = nextAlarm == 0 ? null : Alarms.describeNext(this, nextAlarm);
         boolean soon = nextAlarm != 0 && nextAlarm - System.currentTimeMillis() < 24 * 3600_000L;
         if (soon) {
-            mAmbientAlarm.setText(alarmText);
-            mAmbientAlarm.setCompoundDrawablesRelativeWithIntrinsicBounds(
-                    tintedIcon(R.drawable.ic_alarm), null, null, null);
+            setTextAndIcon(mAmbientAlarm, alarmText, R.drawable.ic_alarm);
             mAmbientAlarm.setVisibility(View.VISIBLE);
         } else {
             mAmbientAlarm.setVisibility(View.GONE);
@@ -613,9 +611,21 @@ public class HomeActivity extends Activity {
                 lp.setMarginEnd(dp(12));
                 mChips.addView(chip, lp);
             }
-            chip.setText(chips.get(i));
-            chip.setCompoundDrawablesRelativeWithIntrinsicBounds(tintedIcon(icons.get(i)),
-                    null, null, null);
+            setTextAndIcon(chip, chips.get(i), icons.get(i));
+        }
+    }
+
+    /**
+     * Sets a label's text and leading icon only when they change. This runs every second, and
+     * each set would otherwise lay out the screen again and allocate a new tinted icon.
+     */
+    private void setTextAndIcon(TextView view, CharSequence text, int icon) {
+        if (!TextUtils.equals(view.getText(), text)) {
+            view.setText(text);
+        }
+        if (!Integer.valueOf(icon).equals(view.getTag(R.id.raven_icon_res))) {
+            view.setTag(R.id.raven_icon_res, icon);
+            view.setCompoundDrawablesRelativeWithIntrinsicBounds(tintedIcon(icon), null, null, null);
         }
     }
 

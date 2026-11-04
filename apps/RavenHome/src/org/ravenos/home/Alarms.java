@@ -13,6 +13,10 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.text.DateFormatSymbols;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
@@ -231,12 +235,12 @@ final class Alarms {
 
     /** "Today 6:30", "Tomorrow 6:30" or "Wed 6:30". */
     static String describeNext(Context context, long when) {
-        Calendar now = Calendar.getInstance();
         Calendar c = Calendar.getInstance();
         c.setTimeInMillis(when);
         String time = DateFormat.getTimeFormat(context).format(c.getTime());
-        int days = c.get(Calendar.DAY_OF_YEAR) - now.get(Calendar.DAY_OF_YEAR)
-                + 365 * (c.get(Calendar.YEAR) - now.get(Calendar.YEAR));
+        // Count calendar days, which also works across New Year in a leap year.
+        int days = (int) ChronoUnit.DAYS.between(LocalDate.now(),
+                Instant.ofEpochMilli(when).atZone(ZoneId.systemDefault()).toLocalDate());
         if (days <= 0) {
             return context.getString(R.string.next_alarm_today, time);
         } else if (days == 1) {

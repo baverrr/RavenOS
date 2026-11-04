@@ -4,7 +4,9 @@ import android.content.ContentProvider;
 import android.content.ContentValues;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.Binder;
 import android.os.Bundle;
+import android.os.Process;
 
 /**
  * Gives Settings › About a live summary under "Device health" (CPU temperature, memory in use,
@@ -23,6 +25,12 @@ public class HealthSummaryProvider extends ContentProvider {
     @Override
     public Bundle call(String method, String arg, Bundle extras) {
         Bundle result = new Bundle();
+        // The provider is exported for Settings, which runs as the system user. Other apps get
+        // nothing: call() isn't covered by a read permission.
+        int caller = Binder.getCallingUid();
+        if (caller != Process.SYSTEM_UID && caller != Process.myUid()) {
+            return result;
+        }
         if (METHOD_GET_DYNAMIC_SUMMARY.equals(method)) {
             result.putString(KEY_SUMMARY, new DeviceStats(getContext()).summary());
         }

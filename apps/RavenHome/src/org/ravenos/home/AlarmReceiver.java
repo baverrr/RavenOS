@@ -3,6 +3,10 @@ package org.ravenos.home;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.text.TextUtils;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** Fires alarms and timers (private), and restores schedules after boot or a clock change. */
 public class AlarmReceiver extends BroadcastReceiver {
@@ -27,10 +31,18 @@ public class AlarmReceiver extends BroadcastReceiver {
                 break;
             }
             case ACTION_TIMER: {
-                Timers.Timer timer = Timers.get(context, id);
-                Timers.schedule(context);
-                if (timer != null) {
-                    RingService.start(context, RingService.KIND_TIMER, id, timer.label);
+                // Ring every timer that is due, not just the one this alarm was set for: two
+                // can end moments apart, or the clock may have jumped past several.
+                List<Timers.Timer> due = Timers.takeDue(context);
+                if (!due.isEmpty()) {
+                    List<String> labels = new ArrayList<>();
+                    for (Timers.Timer t : due) {
+                        if (!TextUtils.isEmpty(t.label)) {
+                            labels.add(t.label);
+                        }
+                    }
+                    RingService.start(context, RingService.KIND_TIMER, due.get(0).id,
+                            TextUtils.join(", ", labels));
                 }
                 break;
             }
