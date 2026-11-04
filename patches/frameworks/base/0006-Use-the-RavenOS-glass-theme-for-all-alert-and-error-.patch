@@ -1,0 +1,654 @@
+From f8b168ae3e65131e2d05c48b574ac04c19d57f0a Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 21:52:33 -0700
+Subject: [PATCH] Use the RavenOS glass theme for all alert and error dialogs
+
+RavenOS is always dark, but apps on light themes still opened light
+dialogs, such as Camera2's "critical permissions" error. Make every
+framework dialog the dark glass dialog:
+
+- Theme.Material.Light opens Theme.Material.Dialog(.Alert) as its
+  dialogTheme and alertDialogTheme, and Theme.Material.Light.Dialog
+  (with Light.Dialog.Alert, MinWidth, NoActionBar and FixedSize, which
+  inherit from it by name) is based on Theme.Material.Dialog.
+- Theme.DeviceDefault.Light.Dialog, .MinWidth, .NoActionBar,
+  .NoActionBar.MinWidth, .FixedSize, .NoActionBar.FixedSize and
+  .Light.Dialog.Alert are now the dark DeviceDefault dialog themes. That
+  also covers the crash and "isn't responding" dialogs
+  (Theme.DeviceDefault.Dialog.AppError) and SystemUI's dialogs.
+- Dialogs use raven_card_radius corners in every DeviceDefault and
+  Material theme, and dialog_background_material gets the thin
+  raven_glass_stroke edge of the theme's cards.
+- SystemUI's media output dialog uses the same corners and edge.
+
+Colors come from the dark palette already pointed at raven_glass.xml:
+raven_surface background, light text, raven_accent buttons. No public
+resource changed.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I46fec36ff2eec686ff7a6e584de9d600449378f8
+---
+ .../drawable/dialog_background_material.xml   |   2 +
+ .../res/res/values/themes_device_defaults.xml | 254 ++++--------------
+ core/res/res/values/themes_material.xml       |  13 +-
+ .../media_output_dialog_background.xml        |   4 +-
+ 4 files changed, 64 insertions(+), 209 deletions(-)
+
+diff --git a/core/res/res/drawable/dialog_background_material.xml b/core/res/res/drawable/dialog_background_material.xml
+index e017d3c8..aab61d18 100644
+--- a/core/res/res/drawable/dialog_background_material.xml
++++ b/core/res/res/drawable/dialog_background_material.xml
+@@ -18,6 +18,8 @@
+     android:inset="16dp">
+     <shape android:shape="rectangle">
+         <corners android:radius="?attr/dialogCornerRadius" />
++        <!-- RavenOS: the thin glass edge the theme's cards have. -->
++        <stroke android:width="1dp" android:color="@color/raven_glass_stroke" />
+         <solid android:color="?attr/colorBackground" />
+     </shape>
+ </inset>
+diff --git a/core/res/res/values/themes_device_defaults.xml b/core/res/res/values/themes_device_defaults.xml
+index 4c6958ff..0382c1aa 100644
+--- a/core/res/res/values/themes_device_defaults.xml
++++ b/core/res/res/values/themes_device_defaults.xml
+@@ -93,7 +93,7 @@ easier.
+ 
+         <!-- Dialog attributes -->
+         <item name="dialogTheme">@style/Theme.DeviceDefault.Dialog</item>
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+ 
+         <!-- AlertDialog attributes -->
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+@@ -230,7 +230,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -258,7 +258,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -288,7 +288,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -317,7 +317,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -361,7 +361,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Progress bar attributes -->
+@@ -382,7 +382,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -409,7 +409,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -437,7 +437,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -481,7 +481,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -510,7 +510,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -537,7 +537,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -566,7 +566,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -594,7 +594,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -622,7 +622,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -650,7 +650,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_light</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -678,7 +678,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_light</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -700,7 +700,7 @@ easier.
+         <item name="windowTitleStyle">@style/DialogWindowTitle.DeviceDefault</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Color palette -->
+@@ -739,7 +739,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -765,7 +765,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -824,7 +824,7 @@ easier.
+ 
+         <!-- Dialog attributes -->
+         <item name="dialogTheme">@style/Theme.DeviceDefault.Light.Dialog</item>
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+ 
+         <!-- AlertDialog attributes -->
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+@@ -957,7 +957,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_light</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -984,7 +984,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_light</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -1012,7 +1012,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_light</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -1042,7 +1042,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_light</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -1071,7 +1071,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_light</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -1092,157 +1092,30 @@ easier.
+     <!-- DeviceDefault light theme for dialog windows and activities. This changes the window to be
+     floating (not fill the entire screen), and puts a frame around its contents. You can set this
+     theme on an activity if you would like to make an activity that looks like a Dialog.-->
+-    <style name="Theme.DeviceDefault.Light.Dialog" parent="Theme.Material.Light.Dialog">
+-        <item name="windowTitleStyle">@style/DialogWindowTitle.DeviceDefault.Light</item>
+-        <item name="windowAnimationStyle">@style/Animation.DeviceDefault.Dialog</item>
+-
+-        <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
+-        <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+-
+-        <!-- Button styles -->
+-        <item name="buttonCornerRadius">@dimen/config_buttonCornerRadius</item>
+-        <item name="buttonBarStyle">@style/DeviceDefault.Light.ButtonBar.AlertDialog</item>
+-        <item name="buttonBarButtonStyle">@style/Widget.DeviceDefault.Button.ButtonBar.AlertDialog</item>
+-        <item name="borderlessButtonStyle">@style/Widget.DeviceDefault.Light.Button.Borderless.Small</item>
+-
+-        <item name="textAppearance">@style/TextAppearance.DeviceDefault</item>
+-        <item name="textAppearanceInverse">@style/TextAppearance.DeviceDefault.Inverse</item>
+-        <item name="textAppearanceButton">@style/TextAppearance.DeviceDefault.Widget.Button</item>
+-
+-        <!-- Color palette -->
+-        <item name="colorPrimary">@color/primary_device_default_light</item>
+-        <item name="colorPrimaryDark">@color/primary_dark_device_default_light</item>
+-        <item name="colorAccent">@color/accent_device_default_light</item>
+-        <item name="colorError">@color/error_color_device_default_light</item>
+-
+-        <!-- Progress bar attributes -->
+-        <item name="colorProgressBackgroundNormal">@color/config_progress_background_tint</item>
+-        <item name="progressBarCornerRadius">@dimen/config_progressBarCornerRadius</item>
+-
+-        <!-- Toolbar attributes -->
+-        <item name="toolbarStyle">@style/Widget.DeviceDefault.Toolbar</item>
+-    </style>
++    <!-- RavenOS is always dark: same as Theme.DeviceDefault.Dialog. -->
++    <style name="Theme.DeviceDefault.Light.Dialog" parent="Theme.DeviceDefault.Dialog" />
+ 
+     <!-- Variant of {@link #Theme_DeviceDefault_Light_Dialog} that has a nice minimum width for a
+     regular dialog. -->
+-    <style name="Theme.DeviceDefault.Light.Dialog.MinWidth" parent="Theme.Material.Light.Dialog.MinWidth">
+-        <item name="windowTitleStyle">@style/DialogWindowTitle.DeviceDefault.Light</item>
+-        <item name="windowAnimationStyle">@style/Animation.DeviceDefault.Dialog</item>
+-
+-        <!-- Color palette -->
+-        <item name="colorPrimary">@color/primary_device_default_light</item>
+-        <item name="colorPrimaryDark">@color/primary_dark_device_default_light</item>
+-        <item name="colorAccent">@color/accent_device_default_light</item>
+-        <item name="colorError">@color/error_color_device_default_light</item>
+-
+-        <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
+-        <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+-
+-        <!-- Text styles -->
+-        <item name="textAppearanceButton">@style/TextAppearance.DeviceDefault.Widget.Button</item>
+-
+-        <!-- Button styles -->
+-        <item name="buttonCornerRadius">@dimen/config_buttonCornerRadius</item>
+-        <item name="buttonBarButtonStyle">@style/Widget.DeviceDefault.Button.ButtonBar.AlertDialog</item>
+-
+-        <!-- Progress bar attributes -->
+-        <item name="colorProgressBackgroundNormal">@color/config_progress_background_tint</item>
+-        <item name="progressBarCornerRadius">@dimen/config_progressBarCornerRadius</item>
+-
+-        <!-- Toolbar attributes -->
+-        <item name="toolbarStyle">@style/Widget.DeviceDefault.Toolbar</item>
+-    </style>
++    <!-- RavenOS is always dark: same as Theme.DeviceDefault.Dialog.MinWidth. -->
++    <style name="Theme.DeviceDefault.Light.Dialog.MinWidth" parent="Theme.DeviceDefault.Dialog.MinWidth" />
+ 
+      <!-- Variant of {@link #Theme_DeviceDefault_Light_Dialog} without an action bar -->
+-    <style name="Theme.DeviceDefault.Light.Dialog.NoActionBar" parent="Theme.Material.Light.Dialog.NoActionBar">
+-        <item name="windowTitleStyle">@style/DialogWindowTitle.DeviceDefault.Light</item>
+-        <item name="windowAnimationStyle">@style/Animation.DeviceDefault.Dialog</item>
+-
+-        <!-- Color palette -->
+-        <item name="colorPrimary">@color/primary_device_default_light</item>
+-        <item name="colorPrimaryDark">@color/primary_dark_device_default_light</item>
+-        <item name="colorAccent">@color/accent_device_default_light</item>
+-        <item name="colorError">@color/error_color_device_default_light</item>
+-
+-        <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
+-        <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+-
+-        <!-- Text styles -->
+-        <item name="textAppearanceButton">@style/TextAppearance.DeviceDefault.Widget.Button</item>
+-
+-        <!-- Button styles -->
+-        <item name="buttonCornerRadius">@dimen/config_buttonCornerRadius</item>
+-        <item name="buttonBarButtonStyle">@style/Widget.DeviceDefault.Button.ButtonBar.AlertDialog</item>
+-
+-        <!-- Progress bar attributes -->
+-        <item name="colorProgressBackgroundNormal">@color/config_progress_background_tint</item>
+-        <item name="progressBarCornerRadius">@dimen/config_progressBarCornerRadius</item>
+-
+-        <!-- Toolbar attributes -->
+-        <item name="toolbarStyle">@style/Widget.DeviceDefault.Toolbar</item>
+-    </style>
++    <!-- RavenOS is always dark: same as Theme.DeviceDefault.Dialog.NoActionBar. -->
++    <style name="Theme.DeviceDefault.Light.Dialog.NoActionBar" parent="Theme.DeviceDefault.Dialog.NoActionBar" />
+ 
+     <!-- Variant of {@link #Theme_DeviceDefault_Light_Dialog_NoActionBar} that has a nice minimum
+     width for a regular dialog. -->
+-    <style name="Theme.DeviceDefault.Light.Dialog.NoActionBar.MinWidth" parent="Theme.Material.Light.Dialog.NoActionBar.MinWidth">
+-        <item name="windowTitleStyle">@style/DialogWindowTitle.DeviceDefault.Light</item>
+-        <item name="windowAnimationStyle">@style/Animation.DeviceDefault.Dialog</item>
+-
+-        <!-- Color palette -->
+-        <item name="colorPrimary">@color/primary_device_default_light</item>
+-        <item name="colorPrimaryDark">@color/primary_dark_device_default_light</item>
+-        <item name="colorAccent">@color/accent_device_default_light</item>
+-        <item name="colorError">@color/error_color_device_default_light</item>
+-
+-        <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
+-        <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+-
+-        <!-- Text styles -->
+-        <item name="textAppearanceButton">@style/TextAppearance.DeviceDefault.Widget.Button</item>
+-
+-        <!-- Button styles -->
+-        <item name="buttonCornerRadius">@dimen/config_buttonCornerRadius</item>
+-        <item name="buttonBarButtonStyle">@style/Widget.DeviceDefault.Button.ButtonBar.AlertDialog</item>
+-
+-        <!-- Progress bar attributes -->
+-        <item name="colorProgressBackgroundNormal">@color/config_progress_background_tint</item>
+-        <item name="progressBarCornerRadius">@dimen/config_progressBarCornerRadius</item>
+-
+-        <!-- Toolbar attributes -->
+-        <item name="toolbarStyle">@style/Widget.DeviceDefault.Toolbar</item>
+-    </style>
++    <!-- RavenOS is always dark: same as Theme.DeviceDefault.Dialog.NoActionBar.MinWidth. -->
++    <style name="Theme.DeviceDefault.Light.Dialog.NoActionBar.MinWidth" parent="Theme.DeviceDefault.Dialog.NoActionBar.MinWidth" />
+ 
+     <!-- Variant of Theme.DeviceDefault.Dialog that has a fixed size. -->
+-    <style name="Theme.DeviceDefault.Light.Dialog.FixedSize">
+-        <item name="windowFixedWidthMajor">@dimen/dialog_fixed_width_major</item>
+-        <item name="windowFixedWidthMinor">@dimen/dialog_fixed_width_minor</item>
+-        <item name="windowFixedHeightMajor">@dimen/dialog_fixed_height_major</item>
+-        <item name="windowFixedHeightMinor">@dimen/dialog_fixed_height_minor</item>
+-
+-        <!-- Color palette -->
+-        <item name="colorPrimary">@color/primary_device_default_light</item>
+-        <item name="colorPrimaryDark">@color/primary_dark_device_default_light</item>
+-        <item name="colorAccent">@color/accent_device_default_light</item>
+-        <item name="colorError">@color/error_color_device_default_light</item>
+-    </style>
++    <!-- RavenOS is always dark: same as Theme.DeviceDefault.Dialog.FixedSize. -->
++    <style name="Theme.DeviceDefault.Light.Dialog.FixedSize" parent="Theme.DeviceDefault.Dialog.FixedSize" />
+ 
+     <!-- Variant of Theme.DeviceDefault.Dialog.NoActionBar that has a fixed size. -->
+-    <style name="Theme.DeviceDefault.Light.Dialog.NoActionBar.FixedSize">
+-        <item name="windowFixedWidthMajor">@dimen/dialog_fixed_width_major</item>
+-        <item name="windowFixedWidthMinor">@dimen/dialog_fixed_width_minor</item>
+-        <item name="windowFixedHeightMajor">@dimen/dialog_fixed_height_major</item>
+-        <item name="windowFixedHeightMinor">@dimen/dialog_fixed_height_minor</item>
+-
+-        <!-- Color palette -->
+-        <item name="colorPrimary">@color/primary_device_default_light</item>
+-        <item name="colorPrimaryDark">@color/primary_dark_device_default_light</item>
+-        <item name="colorAccent">@color/accent_device_default_light</item>
+-        <item name="colorError">@color/error_color_device_default_light</item>
+-    </style>
++    <!-- RavenOS is always dark: same as Theme.DeviceDefault.Dialog.NoActionBar.FixedSize. -->
++    <style name="Theme.DeviceDefault.Light.Dialog.NoActionBar.FixedSize" parent="Theme.DeviceDefault.Dialog.NoActionBar.FixedSize" />
+ 
+     <!-- DeviceDefault light theme for a window that will be displayed either full-screen on smaller
+     screens (small, normal) or as a dialog on larger screens (large, xlarge). -->
+@@ -1257,7 +1130,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_light</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -1289,7 +1162,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_light</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -1319,7 +1192,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_light</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -1348,7 +1221,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_light</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -1366,33 +1239,8 @@ easier.
+         <item name="toolbarStyle">@style/Widget.DeviceDefault.Toolbar</item>
+     </style>
+ 
+-    <style name="Theme.DeviceDefault.Light.Dialog.Alert" parent="Theme.Material.Light.Dialog.Alert">
+-        <item name="windowTitleStyle">@style/DialogWindowTitle.DeviceDefault.Light</item>
+-
+-        <!-- Color palette -->
+-        <item name="colorPrimary">@color/primary_device_default_light</item>
+-        <item name="colorPrimaryDark">@color/primary_dark_device_default_light</item>
+-        <item name="colorAccent">@color/accent_device_default_light</item>
+-        <item name="colorError">@color/error_color_device_default_light</item>
+-
+-        <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
+-        <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+-
+-        <!-- Text styles -->
+-        <item name="textAppearanceButton">@style/TextAppearance.DeviceDefault.Widget.Button</item>
+-
+-        <!-- Button styles -->
+-        <item name="buttonCornerRadius">@dimen/config_buttonCornerRadius</item>
+-        <item name="buttonBarButtonStyle">@style/Widget.DeviceDefault.Button.ButtonBar.AlertDialog</item>
+-
+-        <!-- Progress bar attributes -->
+-        <item name="colorProgressBackgroundNormal">@color/config_progress_background_tint</item>
+-        <item name="progressBarCornerRadius">@dimen/config_progressBarCornerRadius</item>
+-
+-        <!-- Toolbar attributes -->
+-        <item name="toolbarStyle">@style/Widget.DeviceDefault.Toolbar</item>
+-    </style>
++    <!-- RavenOS is always dark: same as Theme.DeviceDefault.Dialog.Alert. -->
++    <style name="Theme.DeviceDefault.Light.Dialog.Alert" parent="Theme.DeviceDefault.Dialog.Alert" />
+ 
+     <style name="Theme.DeviceDefault.Dialog.Alert.DayNight" parent="Theme.DeviceDefault.Light.Dialog.Alert" />
+ 
+@@ -1404,7 +1252,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_light</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -1430,7 +1278,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_light</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -1479,7 +1327,7 @@ easier.
+         <item name="windowLightNavigationBar">true</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+ 
+         <!-- Button styles -->
+         <item name="buttonCornerRadius">@dimen/config_buttonCornerRadius</item>
+@@ -1549,7 +1397,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -1584,7 +1432,7 @@ easier.
+         <item name="windowAnimationStyle">@style/Animation.DeviceDefault.Dialog</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+ 
+         <!-- Text styles -->
+         <item name="textAppearanceButton">@style/TextAppearance.DeviceDefault.Widget.Button</item>
+@@ -1613,7 +1461,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_light</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+@@ -1643,7 +1491,7 @@ easier.
+         <item name="colorError">@color/error_color_device_default_light</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogCornerRadius">@dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Light.Dialog.Alert</item>
+ 
+         <!-- Text styles -->
+diff --git a/core/res/res/values/themes_material.xml b/core/res/res/values/themes_material.xml
+index ba11fa89..36c384cd 100644
+--- a/core/res/res/values/themes_material.xml
++++ b/core/res/res/values/themes_material.xml
+@@ -189,7 +189,7 @@ please see themes_device_defaults.xml.
+         <item name="dialogCustomTitleDecorLayout">@layout/dialog_custom_title_material</item>
+         <item name="dialogTitleDecorLayout">@layout/dialog_title_material</item>
+         <item name="dialogPreferredPadding">@dimen/dialog_padding_material</item>
+-        <item name="dialogCornerRadius">@dimen/dialog_corner_radius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+ 
+         <!-- AlertDialog attributes -->
+         <item name="alertDialogTheme">@style/ThemeOverlay.Material.Dialog.Alert</item>
+@@ -557,15 +557,16 @@ please see themes_device_defaults.xml.
+         <item name="windowActivityTransitions">true</item>
+ 
+         <!-- Dialog attributes -->
+-        <item name="dialogTheme">@style/ThemeOverlay.Material.Dialog</item>
++        <!-- RavenOS is always dark: light themes open the dark glass dialogs too. -->
++        <item name="dialogTheme">@style/Theme.Material.Dialog</item>
+         <item name="dialogTitleIconsDecorLayout">@layout/dialog_title_icons_material</item>
+         <item name="dialogCustomTitleDecorLayout">@layout/dialog_custom_title_material</item>
+         <item name="dialogTitleDecorLayout">@layout/dialog_title_material</item>
+         <item name="dialogPreferredPadding">@dimen/dialog_padding_material</item>
+-        <item name="dialogCornerRadius">@dimen/dialog_corner_radius</item>
++        <item name="dialogCornerRadius">@dimen/raven_card_radius</item>
+ 
+         <!-- AlertDialog attributes -->
+-        <item name="alertDialogTheme">@style/ThemeOverlay.Material.Dialog.Alert</item>
++        <item name="alertDialogTheme">@style/Theme.Material.Dialog.Alert</item>
+         <item name="alertDialogStyle">@style/AlertDialog.Material.Light</item>
+         <item name="alertDialogCenterButtons">false</item>
+         <item name="alertDialogIcon">@drawable/ic_dialog_alert_material</item>
+@@ -1256,7 +1257,9 @@ please see themes_device_defaults.xml.
+          floating (not fill the entire screen), and puts a frame around its
+          contents.  You can set this theme on an activity if you would like to
+          make an activity that looks like a Dialog. -->
+-    <style name="Theme.Material.Light.Dialog" parent="Theme.Material.Light.BaseDialog"/>
++    <!-- RavenOS: light dialogs (and Light.Dialog.Alert, MinWidth, NoActionBar, ... which
++         inherit from this by name) use the dark glass dialog, since RavenOS is always dark. -->
++    <style name="Theme.Material.Light.Dialog" parent="Theme.Material.Dialog"/>
+ 
+     <!-- Variant of Theme.Material.Light.Dialog that has a nice minimum width for
+          a regular dialog. -->
+diff --git a/packages/SystemUI/res/drawable/media_output_dialog_background.xml b/packages/SystemUI/res/drawable/media_output_dialog_background.xml
+index 3ceb0f6a..47cf1a83 100644
+--- a/packages/SystemUI/res/drawable/media_output_dialog_background.xml
++++ b/packages/SystemUI/res/drawable/media_output_dialog_background.xml
+@@ -17,7 +17,9 @@
+ 
+ <inset xmlns:android="http://schemas.android.com/apk/res/android">
+     <shape android:shape="rectangle">
+-        <corners android:radius="8dp" />
++        <!-- RavenOS: same corners and glass edge as the other themed dialogs. -->
++        <corners android:radius="@dimen/raven_card_radius" />
+         <solid android:color="?android:attr/colorBackground" />
++        <stroke android:width="1dp" android:color="@color/raven_glass_stroke" />
+     </shape>
+ </inset>
+-- 
+2.53.0
+

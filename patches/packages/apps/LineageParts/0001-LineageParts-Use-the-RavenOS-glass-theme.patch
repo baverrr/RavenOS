@@ -1,0 +1,641 @@
+From 0842e75be6c484cb98a005af79ecd3d9598b94d6 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 20:17:15 -0700
+Subject: [PATCH] LineageParts: Use the RavenOS glass theme
+
+LineageParts pages open from Settings, so draw them like the RavenOS
+glass Settings:
+
+- Use a dark DeviceDefault base on the raven_backdrop window background,
+  with transparent status, navigation and action bars, and read every
+  color from res/values/raven_glass.xml (the same names as in Settings),
+  so a product overlay recolors both apps the same way.
+- Add GlassGroupDecoration (as in Settings) and attach it in
+  SettingsPreferenceFragment, so each preference group is one rounded
+  glass card with inset separators in a centred column, on every page.
+- Turn the switch bar into a glass card that tints with the accent when
+  on, and tint switches with the accent.
+- Show category titles in raven_fg_3 and keep dialogs on a solid
+  raven_surface.
+- Drop the night-only switch bar override that made its label black.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: Ia667a6e9b4ddf380ff8b33654db8b1aa1d807aa3
+---
+ res/color/raven_switch_thumb.xml              |  10 +
+ res/color/raven_switch_track.xml              |  10 +
+ res/color/raven_text_primary.xml              |   9 +
+ res/color/raven_text_secondary.xml            |   9 +
+ res/drawable/raven_backdrop.xml               |  34 +++
+ res/values-night/themes.xml                   |  22 --
+ res/values/raven_glass.xml                    |  44 ++++
+ res/values/styles.xml                         |   2 +-
+ res/values/themes.xml                         |  54 ++++-
+ .../SettingsPreferenceFragment.java           |  18 ++
+ .../widget/GlassGroupDecoration.java          | 194 ++++++++++++++++++
+ .../lineageparts/widget/SwitchBar.java        |  31 ++-
+ 12 files changed, 406 insertions(+), 31 deletions(-)
+ create mode 100644 res/color/raven_switch_thumb.xml
+ create mode 100644 res/color/raven_switch_track.xml
+ create mode 100644 res/color/raven_text_primary.xml
+ create mode 100644 res/color/raven_text_secondary.xml
+ create mode 100644 res/drawable/raven_backdrop.xml
+ delete mode 100644 res/values-night/themes.xml
+ create mode 100644 res/values/raven_glass.xml
+ create mode 100644 src/org/lineageos/lineageparts/widget/GlassGroupDecoration.java
+
+diff --git a/res/color/raven_switch_thumb.xml b/res/color/raven_switch_thumb.xml
+new file mode 100644
+index 0000000..6cb521b
+--- /dev/null
++++ b/res/color/raven_switch_thumb.xml
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Switch-bar toggle thumb on the glass card. -->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:state_checked="true" android:color="@color/raven_accent" />
++    <item android:color="@color/raven_fg_2" />
++</selector>
+diff --git a/res/color/raven_switch_track.xml b/res/color/raven_switch_track.xml
+new file mode 100644
+index 0000000..83e4108
+--- /dev/null
++++ b/res/color/raven_switch_track.xml
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Switch-bar toggle track on the glass card. -->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:state_checked="true" android:alpha="0.5" android:color="@color/raven_accent" />
++    <item android:alpha="0.4" android:color="@color/raven_fg_3" />
++</selector>
+diff --git a/res/color/raven_text_primary.xml b/res/color/raven_text_primary.xml
+new file mode 100644
+index 0000000..cf7b5a5
+--- /dev/null
++++ b/res/color/raven_text_primary.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:state_enabled="false" android:alpha="0.4" android:color="@color/raven_fg" />
++    <item android:color="@color/raven_fg" />
++</selector>
+diff --git a/res/color/raven_text_secondary.xml b/res/color/raven_text_secondary.xml
+new file mode 100644
+index 0000000..b82014d
+--- /dev/null
++++ b/res/color/raven_text_secondary.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:state_enabled="false" android:alpha="0.4" android:color="@color/raven_fg_2" />
++    <item android:color="@color/raven_fg_2" />
++</selector>
+diff --git a/res/drawable/raven_backdrop.xml b/res/drawable/raven_backdrop.xml
+new file mode 100644
+index 0000000..692cb4b
+--- /dev/null
++++ b/res/drawable/raven_backdrop.xml
+@@ -0,0 +1,34 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Window backdrop behind every LineageParts page, the same as in Settings. Android 11 has
++     no backdrop blur, so the softness of the "glass" comes from these wide, already-blurred
++     glows. -->
++<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
++    <item>
++        <color android:color="@color/raven_bg" />
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.15" android:centerY="0.9"
++                android:gradientRadius="80%p"
++                android:startColor="@color/raven_glow_1" android:endColor="#00000000" />
++        </shape>
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.8" android:centerY="0.15"
++                android:gradientRadius="75%p"
++                android:startColor="@color/raven_glow_2" android:endColor="#00000000" />
++        </shape>
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.55" android:centerY="0.55"
++                android:gradientRadius="55%p"
++                android:startColor="@color/raven_glow_3" android:endColor="#00000000" />
++        </shape>
++    </item>
++</layer-list>
+diff --git a/res/values-night/themes.xml b/res/values-night/themes.xml
+deleted file mode 100644
+index 0d03073..0000000
+--- a/res/values-night/themes.xml
++++ /dev/null
+@@ -1,22 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     Copyright (C) 2018 The Android Open Source Project
+-
+-     Licensed under the Apache License, Version 2.0 (the "License");
+-     you may not use this file except in compliance with the License.
+-     You may obtain a copy of the License at
+-
+-          http://www.apache.org/licenses/LICENSE-2.0
+-
+-     Unless required by applicable law or agreed to in writing, software
+-     distributed under the License is distributed on an "AS IS" BASIS,
+-     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-     See the License for the specific language governing permissions and
+-     limitations under the License.
+--->
+-
+-<resources>
+-    <style name="ThemeOverlay.SwitchBar.Settings" parent="ThemeOverlay.SwitchBar.Settings.Base">
+-        <item name="android:textColorPrimaryInverse">@android:color/black</item>
+-    </style>
+-</resources>
+diff --git a/res/values/raven_glass.xml b/res/values/raven_glass.xml
+new file mode 100644
+index 0000000..debdbb9
+--- /dev/null
++++ b/res/values/raven_glass.xml
+@@ -0,0 +1,44 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- RavenOS glass theme tokens. These are the Midnight Aurora values; the product picks a
++     variant by overlaying this file from vendor/ravenos/themes/<variant>/ (see THEME.md). -->
++<resources>
++    <!-- Backdrop: base fill and three soft glows. -->
++    <color name="raven_bg">#FF070B1D</color>
++    <color name="raven_glow_1">#CC0D9488</color>
++    <color name="raven_glow_2">#AA7C3AED</color>
++    <color name="raven_glow_3">#881E3A8A</color>
++
++    <!-- Text. -->
++    <color name="raven_fg">#FFF0F9FF</color>
++    <color name="raven_fg_2">#FFBAE6FD</color>
++    <color name="raven_fg_3">#FF7FA3C4</color>
++
++    <!-- Glass cards. -->
++    <color name="raven_glass">#12FFFFFF</color>
++    <color name="raven_glass_stroke">#29BAE6FD</color>
++    <color name="raven_separator">#1ABAE6FD</color>
++    <color name="raven_ripple">#1FFFFFFF</color>
++
++    <!-- Accent, and the switch bar when it is on. -->
++    <color name="raven_accent">#FF22D3EE</color>
++    <color name="raven_on_accent">#FF04212A</color>
++    <color name="raven_switchbar_on">#2922D3EE</color>
++    <color name="raven_switchbar_on_stroke">#7322D3EE</color>
++    <color name="raven_tab_selected">#29FFFFFF</color>
++
++    <!-- Solid surface for dialogs: no live blur on Android 11, so these stay opaque. -->
++    <color name="raven_surface">#FF141B33</color>
++
++    <!-- True for light variants: dark status bar icons and dark text. -->
++    <bool name="raven_light_ui">false</bool>
++
++    <dimen name="raven_card_radius">20dp</dimen>
++    <dimen name="raven_dialog_radius">24dp</dimen>
++    <dimen name="raven_content_max_width">760dp</dimen>
++    <dimen name="raven_content_min_side">24dp</dimen>
++    <dimen name="raven_group_gap">16dp</dimen>
++</resources>
+diff --git a/res/values/styles.xml b/res/values/styles.xml
+index f2bd2e4..d9c39fd 100644
+--- a/res/values/styles.xml
++++ b/res/values/styles.xml
+@@ -64,7 +64,7 @@
+     <style name="PreferenceTheme" parent="@style/PreferenceThemeOverlay.SettingsBase">
+         <item name="preferenceCategoryTitleTextAppearance">@style/TextAppearance.CategoryTitle
+         </item>
+-        <item name="preferenceCategoryTitleTextColor">?android:attr/textColorSecondary</item>
++        <item name="preferenceCategoryTitleTextColor">@color/raven_fg_3</item>
+     </style>
+ 
+     <style name="PreferenceHeaderPanelSinglePane">
+diff --git a/res/values/themes.xml b/res/values/themes.xml
+index 3a37ef0..ee8662e 100644
+--- a/res/values/themes.xml
++++ b/res/values/themes.xml
+@@ -22,7 +22,37 @@
+          layouts against a remote context using our local theme colors. Due to the implementation
+          details of Theme, we can't reference any local resources and MUST instead use the values
+          directly. So use #ff263238 instead of @color/theme_primary and so on. -->
+-    <style name="Theme.SettingsBase" parent="@android:style/Theme.DeviceDefault.Settings" />
++    <!-- RavenOS: LineageParts pages open from Settings, so they use the same glass theme: the
++         dark DeviceDefault base, drawn on the glass backdrop, with every color from
++         res/values/raven_glass.xml. -->
++    <style name="Theme.SettingsBase" parent="@android:style/Theme.DeviceDefault">
++        <item name="android:windowBackground">@drawable/raven_backdrop</item>
++        <item name="android:colorBackground">@color/raven_bg</item>
++        <item name="android:colorBackgroundCacheHint">@null</item>
++        <item name="android:colorPrimary">@color/raven_bg</item>
++        <item name="android:colorPrimaryDark">@color/raven_bg</item>
++        <item name="android:colorAccent">@color/raven_accent</item>
++        <item name="android:colorControlHighlight">@color/raven_ripple</item>
++        <item name="android:colorEdgeEffect">@color/raven_accent</item>
++        <item name="android:textColorPrimary">@color/raven_text_primary</item>
++        <item name="android:textColorSecondary">@color/raven_text_secondary</item>
++        <item name="android:textColorTertiary">@color/raven_fg_3</item>
++        <item name="android:statusBarColor">@android:color/transparent</item>
++        <item name="android:navigationBarColor">@android:color/transparent</item>
++        <item name="android:navigationBarDividerColor">@android:color/transparent</item>
++        <!-- No system scrim behind the navigation buttons; the backdrop runs to the edge. -->
++        <item name="android:enforceNavigationBarContrast">false</item>
++        <item name="android:windowLightStatusBar">@bool/raven_light_ui</item>
++        <item name="android:windowLightNavigationBar">@bool/raven_light_ui</item>
++        <item name="android:actionBarTheme">@style/ThemeOverlay.Raven.ActionBar</item>
++        <item name="android:dialogCornerRadius">@dimen/raven_dialog_radius</item>
++    </style>
++
++    <style name="ThemeOverlay.Raven.ActionBar" parent="@android:style/ThemeOverlay.Material.ActionBar">
++        <item name="android:textColorPrimary">@color/raven_text_primary</item>
++        <item name="android:textColorSecondary">@color/raven_text_secondary</item>
++        <item name="android:colorControlNormal">@color/raven_fg</item>
++    </style>
+ 
+     <style name="Theme.Settings" parent="Theme.SettingsBase">
+         <item name="dialogPreferenceStyle">@style/DialogPreferenceStyle</item>
+@@ -51,23 +81,29 @@
+         <item name="alertDialogTheme">@style/Theme.AlertDialog</item>
+     </style>
+ 
++    <!-- RavenOS: no bar fill or shadow, so the glass backdrop runs up under the title. -->
+     <style name="Theme.ActionBar" parent="@android:style/Widget.Material.ActionBar.Solid">
+         <item name="contentInsetStart">@dimen/actionbar_contentInsetStart</item>
++        <item name="android:background">@android:color/transparent</item>
++        <item name="android:elevation">0dp</item>
+     </style>
+ 
+     <style name="ThemeOverlay.SwitchBar.Settings.Base" parent="@*android:style/ThemeOverlay.DeviceDefault.ActionBar">
+-        <item name="android:elevation">1dp</item>
++        <item name="android:elevation">0dp</item>
++        <item name="android:textColorPrimary">@color/raven_text_primary</item>
++        <!-- The switch label uses the inverse color, made for a solid accent bar. -->
++        <item name="android:textColorPrimaryInverse">@color/raven_text_primary</item>
+         <item name="switchBarMarginStart">@dimen/switchbar_margin_start</item>
+         <item name="switchBarMarginEnd">@dimen/switchbar_margin_end</item>
+-        <item name="switchBarBackgroundColor">@color/switchbar_background_color</item>
+-        <item name="switchBarBackgroundActivatedColor">?android:attr/colorAccent</item>
++        <item name="switchBarBackgroundColor">@color/raven_glass</item>
++        <item name="switchBarBackgroundActivatedColor">@color/raven_switchbar_on</item>
+     </style>
+ 
+     <style name="ThemeOverlay.SwitchBar.Settings" parent="ThemeOverlay.SwitchBar.Settings.Base"/>
+ 
+     <style name="Widget.SwitchBar.Switch" parent="@android:style/Widget.Material.CompoundButton.Switch">
+-        <item name="android:trackTint">@color/switchbar_switch_track_tint</item>
+-        <item name="android:thumbTint">@color/switchbar_switch_thumb_tint</item>
++        <item name="android:trackTint">@color/raven_switch_track</item>
++        <item name="android:thumbTint">@color/raven_switch_thumb</item>
+         <item name="android:minHeight">@dimen/min_tap_target_size</item>
+         <item name="android:minWidth">@dimen/min_tap_target_size</item>
+     </style>
+@@ -83,8 +119,14 @@
+         <item name="android:windowSoftInputMode">adjustResize</item>
+     </style>
+ 
++    <!-- RavenOS: dialogs stay on a solid surface, since Android 11 has no backdrop blur. -->
+     <style name="Theme.AlertDialog" parent="@*android:style/Theme.DeviceDefault.Settings.Dialog.Alert">
+         <item name="android:windowSoftInputMode">adjustResize</item>
++        <item name="android:colorAccent">@color/raven_accent</item>
++        <item name="android:colorBackground">@color/raven_surface</item>
++        <item name="android:textColorPrimary">@color/raven_text_primary</item>
++        <item name="android:textColorSecondary">@color/raven_text_secondary</item>
++        <item name="android:dialogCornerRadius">@dimen/raven_dialog_radius</item>
+ 
+         <!-- Redefine the ActionBar style for contentInsetStart -->
+         <item name="android:actionBarStyle">@style/Theme.ActionBar</item>
+diff --git a/src/org/lineageos/lineageparts/SettingsPreferenceFragment.java b/src/org/lineageos/lineageparts/SettingsPreferenceFragment.java
+index 505eab5..c892b89 100644
+--- a/src/org/lineageos/lineageparts/SettingsPreferenceFragment.java
++++ b/src/org/lineageos/lineageparts/SettingsPreferenceFragment.java
+@@ -50,10 +50,13 @@ import androidx.recyclerview.widget.RecyclerView;
+ import org.lineageos.lineageparts.widget.CustomDialogPreference;
+ import org.lineageos.lineageparts.widget.DialogCreatable;
+ import org.lineageos.lineageparts.widget.FloatingActionButton;
++import org.lineageos.lineageparts.widget.GlassGroupDecoration;
+ import org.lineageos.lineageparts.widget.HighlightablePreferenceGroupAdapter;
+ import org.lineageos.lineageparts.widget.LayoutPreference;
+ 
+ import java.util.Arrays;
++import java.util.Collections;
++import java.util.Set;
+ import java.util.UUID;
+ 
+ import lineageos.preference.SettingsHelper;
+@@ -133,6 +136,21 @@ public abstract class SettingsPreferenceFragment extends PreferenceFragment
+         return root;
+     }
+ 
++    @Override
++    public void onViewCreated(View view, Bundle savedInstanceState) {
++        super.onViewCreated(view, savedInstanceState);
++        // RavenOS: preferences sit in glass cards, which draw their own separators.
++        setDivider(null);
++        new GlassGroupDecoration(getContext(), getGlassGroupStartKeys()).attachTo(getListView());
++    }
++
++    /**
++     * Keys of preferences that start a new glass card even without a category above them.
++     */
++    protected Set<String> getGlassGroupStartKeys() {
++        return Collections.emptySet();
++    }
++
+     @Override
+     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
+     }
+diff --git a/src/org/lineageos/lineageparts/widget/GlassGroupDecoration.java b/src/org/lineageos/lineageparts/widget/GlassGroupDecoration.java
+new file mode 100644
+index 0000000..2df486b
+--- /dev/null
++++ b/src/org/lineageos/lineageparts/widget/GlassGroupDecoration.java
+@@ -0,0 +1,194 @@
++/*
++ * SPDX-FileCopyrightText: 2026 RavenOS
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package org.lineageos.lineageparts.widget;
++
++import android.content.Context;
++import android.content.res.Resources;
++import android.graphics.Canvas;
++import android.graphics.Paint;
++import android.graphics.Rect;
++import android.graphics.RectF;
++import android.view.View;
++
++import androidx.preference.Preference;
++import androidx.preference.PreferenceCategory;
++import androidx.preference.PreferenceGroupAdapter;
++import androidx.recyclerview.widget.RecyclerView;
++
++import com.android.settingslib.widget.FooterPreference;
++
++import org.lineageos.lineageparts.R;
++
++import java.util.Collections;
++import java.util.Set;
++
++/**
++ * Draws each run of preferences between category headers as one rounded glass card, with
++ * hairline separators inset to the title, and keeps the list in a centred column on wide
++ * screens. Category titles and footers sit outside the cards. A copy of the one in Settings,
++ * so LineageParts pages match the Settings pages they open from.
++ */
++public class GlassGroupDecoration extends RecyclerView.ItemDecoration {
++
++    private final Set<String> mGroupStartKeys;
++    private final Paint mFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
++    private final Paint mStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
++    private final Paint mSeparatorPaint = new Paint();
++    private final float mRadius;
++    private final float mStrokeWidth;
++    private final int mGroupGap;
++    private final RectF mRun = new RectF();
++
++    public GlassGroupDecoration(Context context) {
++        this(context, Collections.emptySet());
++    }
++
++    /**
++     * @param groupStartKeys keys of preferences that start a new card even without a category
++     *                       above them, for screens such as the homepage that have no categories
++     */
++    public GlassGroupDecoration(Context context, Set<String> groupStartKeys) {
++        final Resources res = context.getResources();
++        mGroupStartKeys = groupStartKeys;
++        mRadius = res.getDimension(R.dimen.raven_card_radius);
++        mStrokeWidth = res.getDisplayMetrics().density;
++        mGroupGap = res.getDimensionPixelSize(R.dimen.raven_group_gap);
++        mFillPaint.setColor(context.getColor(R.color.raven_glass));
++        mStrokePaint.setColor(context.getColor(R.color.raven_glass_stroke));
++        mStrokePaint.setStyle(Paint.Style.STROKE);
++        mStrokePaint.setStrokeWidth(mStrokeWidth);
++        mSeparatorPaint.setColor(context.getColor(R.color.raven_separator));
++    }
++
++    /** Adds the decoration to {@code list} and keeps its column width in step with the list. */
++    public void attachTo(RecyclerView list) {
++        list.addItemDecoration(this);
++        list.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
++            if (r - l != or - ol) {
++                list.invalidateItemDecorations();
++            }
++        });
++    }
++
++    /** Side margin that centres content in a column no wider than raven_content_max_width. */
++    public static int getSideInset(Context context, int width) {
++        final Resources res = context.getResources();
++        final int maxWidth = res.getDimensionPixelSize(R.dimen.raven_content_max_width);
++        final int minSide = res.getDimensionPixelSize(R.dimen.raven_content_min_side);
++        return Math.max(minSide, (width - maxWidth) / 2);
++    }
++
++    @Override
++    public void getItemOffsets(Rect outRect, View view, RecyclerView parent,
++            RecyclerView.State state) {
++        final int position = parent.getChildAdapterPosition(view);
++        final Preference preference = getItem(parent, position);
++        if (preference == null) {
++            return;
++        }
++        final int side = getSideInset(parent.getContext(), parent.getWidth());
++        outRect.left = side;
++        outRect.right = side;
++        if (isCard(preference) && endsGroup(parent, position)) {
++            outRect.bottom = mGroupGap;
++        }
++    }
++
++    @Override
++    public void onDraw(Canvas canvas, RecyclerView parent, RecyclerView.State state) {
++        boolean inRun = false;
++        final int count = parent.getChildCount();
++        for (int i = 0; i < count; i++) {
++            final View child = parent.getChildAt(i);
++            final int position = parent.getChildAdapterPosition(child);
++            final Preference preference = getItem(parent, position);
++            if (preference == null || !isCard(preference)) {
++                if (inRun) {
++                    // The rest of this group is not laid out yet; leave its bottom open.
++                    drawRun(canvas, false);
++                    inRun = false;
++                }
++                continue;
++            }
++            final float top = child.getTop() + child.getTranslationY();
++            final float bottom = child.getBottom() + child.getTranslationY();
++            final boolean first = startsGroup(parent, position);
++            if (first && inRun) {
++                drawRun(canvas, false);
++                inRun = false;
++            }
++            if (!inRun) {
++                // A group whose first rows have scrolled away keeps its top edge off-screen.
++                mRun.set(child.getLeft(), first ? top : top - 2 * mRadius,
++                        child.getRight(), bottom);
++                inRun = true;
++            } else {
++                mRun.bottom = bottom;
++                drawSeparator(canvas, child, top);
++            }
++            if (endsGroup(parent, position)) {
++                drawRun(canvas, true);
++                inRun = false;
++            }
++        }
++        if (inRun) {
++            drawRun(canvas, false);
++        }
++    }
++
++    private void drawRun(Canvas canvas, boolean closed) {
++        if (!closed) {
++            mRun.bottom += 2 * mRadius;
++        }
++        canvas.drawRoundRect(mRun, mRadius, mRadius, mFillPaint);
++        final float half = mStrokeWidth / 2;
++        canvas.drawRoundRect(mRun.left + half, mRun.top + half, mRun.right - half,
++                mRun.bottom - half, mRadius, mRadius, mStrokePaint);
++    }
++
++    private void drawSeparator(Canvas canvas, View child, float y) {
++        float start = child.getLeft();
++        final View title = child.findViewById(android.R.id.title);
++        if (title != null && title.getVisibility() == View.VISIBLE) {
++            int left = 0;
++            for (View v = title; v != child && v != null; v = (View) v.getParent()) {
++                left += v.getLeft();
++            }
++            start += left;
++        } else {
++            start += mRadius;
++        }
++        canvas.drawRect(start, y, child.getRight(), y + mStrokeWidth, mSeparatorPaint);
++    }
++
++    private boolean startsGroup(RecyclerView parent, int position) {
++        final Preference previous = getItem(parent, position - 1);
++        if (previous == null || !isCard(previous)) {
++            return true;
++        }
++        final Preference preference = getItem(parent, position);
++        return preference != null && mGroupStartKeys.contains(preference.getKey());
++    }
++
++    private boolean endsGroup(RecyclerView parent, int position) {
++        final Preference next = getItem(parent, position + 1);
++        return next == null || !isCard(next) || mGroupStartKeys.contains(next.getKey());
++    }
++
++    private static boolean isCard(Preference preference) {
++        return !(preference instanceof PreferenceCategory)
++                && !(preference instanceof FooterPreference);
++    }
++
++    private static Preference getItem(RecyclerView parent, int position) {
++        final RecyclerView.Adapter adapter = parent.getAdapter();
++        if (!(adapter instanceof PreferenceGroupAdapter)
++                || position < 0 || position >= adapter.getItemCount()) {
++            return null;
++        }
++        return ((PreferenceGroupAdapter) adapter).getItem(position);
++    }
++}
+diff --git a/src/org/lineageos/lineageparts/widget/SwitchBar.java b/src/org/lineageos/lineageparts/widget/SwitchBar.java
+index 7686f94..41bf3e4 100644
+--- a/src/org/lineageos/lineageparts/widget/SwitchBar.java
++++ b/src/org/lineageos/lineageparts/widget/SwitchBar.java
+@@ -18,6 +18,8 @@ package org.lineageos.lineageparts.widget;
+ 
+ import android.content.Context;
+ import android.content.res.TypedArray;
++import android.graphics.drawable.GradientDrawable;
++import android.graphics.drawable.InsetDrawable;
+ import android.os.Parcel;
+ import android.os.Parcelable;
+ import android.text.SpannableStringBuilder;
+@@ -62,6 +64,9 @@ public class SwitchBar extends LinearLayout implements CompoundButton.OnCheckedC
+     private int mBackgroundColor;
+     @ColorInt
+     private int mBackgroundActivatedColor;
++    // RavenOS: the bar is a rounded glass card lined up with the preference cards below it.
++    private final GradientDrawable mGlass = new GradientDrawable();
++    private int mGlassSideInset = -1;
+     @StringRes
+     private int mOnTextId;
+     @StringRes
+@@ -111,7 +116,9 @@ public class SwitchBar extends LinearLayout implements CompoundButton.OnCheckedC
+         mSwitch.setSaveEnabled(false);
+         lp = (MarginLayoutParams) mSwitch.getLayoutParams();
+         lp.setMarginEnd(switchBarMarginEnd);
+-        setBackgroundColor(mBackgroundColor);
++        mGlass.setCornerRadius(getResources().getDimension(R.dimen.raven_card_radius));
++        setGlassBackground(false);
++        setBackground(mGlass);
+ 
+         setSwitchBarText(R.string.on, R.string.off);
+ 
+@@ -130,10 +137,30 @@ public class SwitchBar extends LinearLayout implements CompoundButton.OnCheckedC
+ 
+     public void setTextViewLabelAndBackground(boolean isChecked) {
+         mLabel = getResources().getString(isChecked ? mOnTextId : mOffTextId);
+-        setBackgroundColor(isChecked ? mBackgroundActivatedColor : mBackgroundColor);
++        setGlassBackground(isChecked);
+         updateText();
+     }
+ 
++    private void setGlassBackground(boolean isChecked) {
++        mGlass.setColor(isChecked ? mBackgroundActivatedColor : mBackgroundColor);
++        mGlass.setStroke(Math.round(getResources().getDisplayMetrics().density),
++                getContext().getColor(isChecked
++                        ? R.color.raven_switchbar_on_stroke : R.color.raven_glass_stroke));
++    }
++
++    @Override
++    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
++        super.onSizeChanged(w, h, oldw, oldh);
++        final int side = GlassGroupDecoration.getSideInset(getContext(), w);
++        if (side == mGlassSideInset) {
++            return;
++        }
++        mGlassSideInset = side;
++        final int vertical = Math.round(4 * getResources().getDisplayMetrics().density);
++        setBackground(new InsetDrawable(mGlass, side, vertical, side, vertical));
++        post(() -> setPaddingRelative(side, 0, side, 0));
++    }
++
+     public void setSwitchBarText(int onText, int offText) {
+         mOnTextId = onText;
+         mOffTextId = offText;
+-- 
+2.53.0
+

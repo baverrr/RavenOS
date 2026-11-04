@@ -1,0 +1,459 @@
+From 7681889435ebbd814395e2943959c638d6428251 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 21:43:17 -0700
+Subject: [PATCH] Use the RavenOS glass theme for toasts, notifications and
+ dialogs
+
+Add core/res values/raven_glass.xml with the RavenOS glass theme colors
+(Midnight Aurora defaults, the same names as in Settings and SystemUI),
+so a product overlay can recolor system popups with the device's theme
+variant, and use it for:
+
+- Toasts: a solid raven_surface card with the raven_glass_stroke edge,
+  raven_card_radius corners and raven_fg text (also used for the text
+  toasts SystemUI draws for apps).
+- Dark dialogs and popup menus: background_material_dark and
+  background_device_default_dark are raven_bg, the floating variants are
+  raven_surface, and dark Theme.Material popup menus use the floating
+  color like dialogs do.
+- The dark accent: accent_material_dark, and the dark DeviceDefault
+  themes now use raven_accent directly, because the LineageOS overlay
+  sets accent_device_default_* (and material_deep_teal_200) with a
+  higher priority than product overlays.
+- Notifications and heads-up cards: the night notification background
+  is raven_surface; SystemUI cards get the raven_glass_stroke edge,
+  raven_card_radius corners (through android:dialogCornerRadius in
+  Theme.SystemUI, since config_dialogCornerRadius is set by the
+  LineageOS overlay), raven_separator dividers, raven_ripple, and a
+  raven_bg shade behind them.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I8705645eda68e1d070adf85314f6345f49ea3979
+---
+ core/res/res/drawable/toast_frame.xml         |  7 ++--
+ .../res/res/layout/transient_notification.xml |  2 +-
+ core/res/res/values-night/colors.xml          |  3 +-
+ .../values-night/themes_device_defaults.xml   |  2 +-
+ core/res/res/values-night/values.xml          |  2 +-
+ .../res/res/values/colors_device_defaults.xml |  4 +-
+ core/res/res/values/colors_material.xml       |  8 ++--
+ core/res/res/values/raven_glass.xml           | 30 +++++++++++++
+ .../res/res/values/themes_device_defaults.xml | 42 +++++++++----------
+ core/res/res/values/themes_material.xml       |  3 +-
+ .../res/drawable/notification_material_bg.xml |  2 +
+ packages/SystemUI/res/values-night/colors.xml |  6 +--
+ packages/SystemUI/res/values/styles.xml       |  3 ++
+ 13 files changed, 77 insertions(+), 37 deletions(-)
+ create mode 100644 core/res/res/values/raven_glass.xml
+
+diff --git a/core/res/res/drawable/toast_frame.xml b/core/res/res/drawable/toast_frame.xml
+index d57bd6a5..9d64a3ba 100644
+--- a/core/res/res/drawable/toast_frame.xml
++++ b/core/res/res/drawable/toast_frame.xml
+@@ -17,8 +17,9 @@
+ -->
+ <shape xmlns:android="http://schemas.android.com/apk/res/android"
+        android:shape="rectangle">
+-    <!-- background is material_grey_200 with .9 alpha -->
+-    <solid android:color="#E6EEEEEE" />
+-    <corners android:radius="22dp" />
++    <!-- RavenOS: a solid glass-theme card, readable over anything (no blur on Android 11). -->
++    <solid android:color="@color/raven_surface" />
++    <stroke android:width="1dp" android:color="@color/raven_glass_stroke" />
++    <corners android:radius="@dimen/raven_card_radius" />
+ </shape>
+ 
+diff --git a/core/res/res/layout/transient_notification.xml b/core/res/res/layout/transient_notification.xml
+index db586ec3..6a3a8419 100644
+--- a/core/res/res/layout/transient_notification.xml
++++ b/core/res/res/layout/transient_notification.xml
+@@ -33,7 +33,7 @@
+         android:layout_marginVertical="15dp"
+         android:layout_gravity="center_horizontal"
+         android:textAppearance="@style/TextAppearance.Toast"
+-        android:textColor="@color/primary_text_default_material_light"
++        android:textColor="@color/raven_fg"
+         />
+ 
+ </LinearLayout>
+diff --git a/core/res/res/values-night/colors.xml b/core/res/res/values-night/colors.xml
+index 39cdce9c..a7d23a73 100644
+--- a/core/res/res/values-night/colors.xml
++++ b/core/res/res/values-night/colors.xml
+@@ -27,7 +27,8 @@
+     <color name="notification_default_color_dark">#ddffffff</color>
+ 
+     <!-- The background color of a notification card. -->
+-    <color name="notification_material_background_color">@color/black</color>
++    <!-- RavenOS: notifications and heads-up cards on the glass theme surface. -->
++    <color name="notification_material_background_color">@color/raven_surface</color>
+ 
+     <color name="chooser_row_divider">@color/list_divider_color_dark</color>
+     <color name="chooser_gradient_background">@color/loading_gradient_background_color_dark</color>
+diff --git a/core/res/res/values-night/themes_device_defaults.xml b/core/res/res/values-night/themes_device_defaults.xml
+index 93975a9d..75391c3f 100644
+--- a/core/res/res/values-night/themes_device_defaults.xml
++++ b/core/res/res/values-night/themes_device_defaults.xml
+@@ -69,7 +69,7 @@ easier.
+         <item name="colorPrimary">@color/primary_dark_device_default_settings</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_settings</item>
+         <item name="colorSecondary">@color/secondary_device_default_settings</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+diff --git a/core/res/res/values-night/values.xml b/core/res/res/values-night/values.xml
+index 4e6b712f..2e7d23d1 100644
+--- a/core/res/res/values-night/values.xml
++++ b/core/res/res/values-night/values.xml
+@@ -20,7 +20,7 @@
+         <!-- Color palette -->
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_settings</item>
+         <item name="colorSecondary">@color/secondary_device_default_settings</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+         <item name="colorControlNormal">?attr/textColorPrimary</item>
+         <item name="alertDialogTheme">@style/Theme.DeviceDefault.Dialog.Alert</item>
+diff --git a/core/res/res/values/colors_device_defaults.xml b/core/res/res/values/colors_device_defaults.xml
+index 7a8f4119..b4a9ea6a 100644
+--- a/core/res/res/values/colors_device_defaults.xml
++++ b/core/res/res/values/colors_device_defaults.xml
+@@ -37,9 +37,9 @@
+     <color name="accent_device_default_dark">@color/accent_material_dark</color>
+     <color name="accent_device_default">@color/accent_device_default_light</color>
+ 
+-    <color name="background_device_default_dark">@color/background_material_dark</color>
++    <color name="background_device_default_dark">@color/raven_bg</color>
+     <color name="background_device_default_light">@color/background_material_light</color>
+-    <color name="background_floating_device_default_dark">@color/background_floating_material_dark</color>
++    <color name="background_floating_device_default_dark">@color/raven_surface</color>
+     <color name="background_floating_device_default_light">@color/background_floating_material_light</color>
+ 
+     <!-- Error color -->
+diff --git a/core/res/res/values/colors_material.xml b/core/res/res/values/colors_material.xml
+index d357f010..ef7141c0 100644
+--- a/core/res/res/values/colors_material.xml
++++ b/core/res/res/values/colors_material.xml
+@@ -19,9 +19,11 @@
+     <color name="foreground_material_dark">@color/white</color>
+     <color name="foreground_material_light">@color/black</color>
+ 
+-    <color name="background_material_dark">@color/material_grey_850</color>
++    <!-- RavenOS: dark backgrounds and floating surfaces (dialogs, popup menus) and the dark
++         accent come from the glass theme (raven_glass.xml). -->
++    <color name="background_material_dark">@color/raven_bg</color>
+     <color name="background_material_light">@color/material_grey_50</color>
+-    <color name="background_floating_material_dark">@color/material_grey_800</color>
++    <color name="background_floating_material_dark">@color/raven_surface</color>
+     <color name="background_floating_material_light">@color/white</color>
+ 
+     <color name="primary_material_dark">@color/material_grey_900</color>
+@@ -40,7 +42,7 @@
+     <color name="quaternary_material_settings">@color/material_blue_grey_200</color>
+ 
+     <color name="accent_material_light">@color/material_deep_teal_500</color>
+-    <color name="accent_material_dark">@color/material_deep_teal_200</color>
++    <color name="accent_material_dark">@color/raven_accent</color>
+ 
+     <color name="button_material_dark">#ff5a595b</color>
+     <color name="button_material_light">#ffd6d7d7</color>
+diff --git a/core/res/res/values/raven_glass.xml b/core/res/res/values/raven_glass.xml
+new file mode 100644
+index 00000000..07b7b010
+--- /dev/null
++++ b/core/res/res/values/raven_glass.xml
+@@ -0,0 +1,30 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- RavenOS glass theme colors (Midnight Aurora defaults), the same names as in Settings.
++     A product overlay replaces this file to recolor toasts, dialogs and popup menus with the
++     device's glass theme variant. Keep the names in step with
++     vendor/ravenos/themes/generate.py (settings_xml). -->
++<resources>
++    <color name="raven_bg">#FF070B1D</color>
++    <color name="raven_glow_1">#CC0D9488</color>
++    <color name="raven_glow_2">#AA7C3AED</color>
++    <color name="raven_glow_3">#881E3A8A</color>
++    <color name="raven_fg">#FFF0F9FF</color>
++    <color name="raven_fg_2">#FFBAE6FD</color>
++    <color name="raven_fg_3">#FF7FA3C4</color>
++    <color name="raven_glass">#12FFFFFF</color>
++    <color name="raven_glass_stroke">#29BAE6FD</color>
++    <color name="raven_separator">#1ABAE6FD</color>
++    <color name="raven_ripple">#1FFFFFFF</color>
++    <color name="raven_accent">#FF22D3EE</color>
++    <color name="raven_on_accent">#FF04212A</color>
++    <color name="raven_switchbar_on">#2922D3EE</color>
++    <color name="raven_switchbar_on_stroke">#7322D3EE</color>
++    <color name="raven_tab_selected">#29FFFFFF</color>
++    <color name="raven_surface">#FF141B33</color>
++    <bool name="raven_light_ui">false</bool>
++    <dimen name="raven_card_radius">20dp</dimen>
++</resources>
+diff --git a/core/res/res/values/themes_device_defaults.xml b/core/res/res/values/themes_device_defaults.xml
+index 1afaf4f7..4c6958ff 100644
+--- a/core/res/res/values/themes_device_defaults.xml
++++ b/core/res/res/values/themes_device_defaults.xml
+@@ -213,7 +213,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+         <item name="colorBackgroundFloating">@color/background_floating_device_default_dark</item>
+         <item name="colorPopupBackground">?attr/colorBackgroundFloating</item>
+@@ -226,7 +226,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+@@ -254,7 +254,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+@@ -284,7 +284,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+@@ -313,7 +313,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+@@ -357,7 +357,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+@@ -378,7 +378,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+@@ -405,7 +405,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+@@ -433,7 +433,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+@@ -477,7 +477,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+@@ -506,7 +506,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+@@ -533,7 +533,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+@@ -562,7 +562,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+@@ -590,7 +590,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+@@ -618,7 +618,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+@@ -706,7 +706,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Text styles -->
+@@ -735,7 +735,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+@@ -761,7 +761,7 @@ easier.
+         <!-- Color palette -->
+         <item name="colorPrimary">@color/primary_device_default_dark</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_dark</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+@@ -1545,7 +1545,7 @@ easier.
+         <item name="colorPrimary">@color/primary_device_default_settings</item>
+         <item name="colorPrimaryDark">@color/primary_dark_device_default_settings</item>
+         <item name="colorSecondary">@color/secondary_device_default_settings</item>
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+         <item name="colorError">@color/error_color_device_default_dark</item>
+ 
+         <!-- Dialog attributes -->
+@@ -1732,7 +1732,7 @@ easier.
+     <style name="ThemeOverlay.DeviceDefault.Popup.Light" parent="@style/ThemeOverlay.Material.Light" />
+ 
+     <style name="ThemeOverlay.DeviceDefault.Accent">
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+     </style>
+ 
+     <style name="ThemeOverlay.DeviceDefault.Accent.Light">
+@@ -1744,7 +1744,7 @@ easier.
+            parent="@style/ThemeOverlay.DeviceDefault.Accent.Light" />
+ 
+     <style name="ThemeOverlay.DeviceDefault.Dark.ActionBar.Accent" parent="ThemeOverlay.Material.Dark.ActionBar">
+-        <item name="colorAccent">@color/accent_device_default_dark</item>
++        <item name="colorAccent">@color/raven_accent</item>
+     </style>
+ 
+     <style name="Theme.DeviceDefault.Light.Dialog.Alert.UserSwitchingDialog" parent="Theme.DeviceDefault.NoActionBar.Fullscreen">
+diff --git a/core/res/res/values/themes_material.xml b/core/res/res/values/themes_material.xml
+index e516a6cf..ba11fa89 100644
+--- a/core/res/res/values/themes_material.xml
++++ b/core/res/res/values/themes_material.xml
+@@ -52,7 +52,8 @@ please see themes_device_defaults.xml.
+         <item name="secondaryContentAlpha">@dimen/secondary_content_alpha_material_dark</item>
+         <item name="backgroundDimAmount">0.6</item>
+         <item name="colorError">@color/error_color_material_dark</item>
+-        <item name="colorPopupBackground">?attr/colorBackground</item>
++        <!-- RavenOS: popup menus on the floating glass-theme surface, like dialogs. -->
++        <item name="colorPopupBackground">?attr/colorBackgroundFloating</item>
+         <item name="colorListDivider">?attr/colorForeground</item>
+         <item name="opacityListDivider">@color/list_divider_opacity_material</item>
+ 
+diff --git a/packages/SystemUI/res/drawable/notification_material_bg.xml b/packages/SystemUI/res/drawable/notification_material_bg.xml
+index ae456631..f17cf6c1 100644
+--- a/packages/SystemUI/res/drawable/notification_material_bg.xml
++++ b/packages/SystemUI/res/drawable/notification_material_bg.xml
+@@ -20,6 +20,8 @@
+     <item>
+         <shape>
+             <solid android:color="@color/notification_material_background_color" />
++            <!-- RavenOS: the glass theme's card edge. -->
++            <stroke android:width="1dp" android:color="@color/raven_glass_stroke" />
+         </shape>
+     </item>
+ </ripple>
+\ No newline at end of file
+diff --git a/packages/SystemUI/res/values-night/colors.xml b/packages/SystemUI/res/values-night/colors.xml
+index 94075bf4..9f98662c 100644
+--- a/packages/SystemUI/res/values-night/colors.xml
++++ b/packages/SystemUI/res/values-night/colors.xml
+@@ -28,16 +28,16 @@
+     <color name="notification_material_background_dimmed_color">#aa000000</color>
+ 
+     <!-- The color of the dividing line between grouped notifications while . -->
+-    <color name="notification_divider_color">#212121</color>
++    <color name="notification_divider_color">@color/raven_separator</color>
+ 
+     <!-- The background color of the notification shade -->
+-    <color name="notification_shade_background_color">@color/GM2_grey_900</color>
++    <color name="notification_shade_background_color">@color/raven_bg</color>
+ 
+     <!-- The color of the gear shown behind a notification -->
+     <color name="notification_gear_color">@color/GM2_grey_500</color>
+ 
+     <!-- The color of the ripples on the untinted notifications -->
+-    <color name="notification_ripple_untinted_color">#30ffffff</color>
++    <color name="notification_ripple_untinted_color">@color/raven_ripple</color>
+ 
+     <!-- The color of the text inside a notification -->
+     <color name="notification_primary_text_color">@*android:color/notification_primary_text_color_dark</color>
+diff --git a/packages/SystemUI/res/values/styles.xml b/packages/SystemUI/res/values/styles.xml
+index ec1bc677..87cc2ce4 100644
+--- a/packages/SystemUI/res/values/styles.xml
++++ b/packages/SystemUI/res/values/styles.xml
+@@ -343,6 +343,9 @@
+         <item name="backgroundProtectedStyle">@style/BackgroundProtectedStyle</item>
+         <item name="android:homeAsUpIndicator">@drawable/ic_arrow_back</item>
+         <item name="shadowRadius">@dimen/keyguard_shadow_radius</item>
++        <!-- RavenOS: notification and heads-up cards (ExpandableOutlineView) and SystemUI
++             dialogs use the glass theme's card radius. -->
++        <item name="android:dialogCornerRadius">@dimen/raven_card_radius</item>
+ 
+         <!-- Needed for MediaRoute chooser dialog -->
+         <item name="*android:isLightTheme">false</item>
+-- 
+2.53.0
+

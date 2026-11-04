@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Bluetooth speaker mode: receive audio (A2DP sink) and control the
+         sender's playback (AVRCP controller). Android 11 can't be a sink and
+         a source at once, so sending audio to headphones is off. -->
+    <bool name="profile_supported_a2dp">false</bool>
+    <bool name="profile_supported_a2dp_sink">true</bool>
+    <bool name="profile_supported_avrcp_target">false</bool>
+    <bool name="profile_supported_avrcp_controller">true</bool>
+    <bool name="avrcp_controller_enable_cover_art">true</bool>
+    <bool name="a2dp_sink_automatically_request_audio_focus">true</bool>
+</resources>

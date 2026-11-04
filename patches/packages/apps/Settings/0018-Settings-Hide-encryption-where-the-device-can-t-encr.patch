@@ -1,0 +1,95 @@
+From b1de42a10ddcd8b5b4f58c0d68caaa7cc27b479f Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 18:59:56 -0700
+Subject: [PATCH] Settings: Hide encryption where the device can't encrypt
+
+On a device with ro.crypto.state=unsupported, the Encrypt tablet item
+is hidden and the Security entry is named after the credential items
+that are left on its page.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I6a515ce8062802a651c6ef61dd22019af823bb43
+---
+ res/xml/encryption_and_credential.xml         |  2 +-
+ res/xml/security_dashboard_settings.xml       |  4 ++--
+ .../EncryptionStatusPreferenceController.java | 19 +++++++++++++++++--
+ 3 files changed, 20 insertions(+), 5 deletions(-)
+
+diff --git a/res/xml/encryption_and_credential.xml b/res/xml/encryption_and_credential.xml
+index fe0498d..a88b85c 100644
+--- a/res/xml/encryption_and_credential.xml
++++ b/res/xml/encryption_and_credential.xml
+@@ -17,7 +17,7 @@
+ <PreferenceScreen
+     xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:settings="http://schemas.android.com/apk/res-auto"
+-    android:title="@string/encryption_and_credential_settings_title">
++    android:title="@string/credentials_title">
+ 
+     <PreferenceCategory
+         android:key="encryption_and_credentials_status_category"
+diff --git a/res/xml/security_dashboard_settings.xml b/res/xml/security_dashboard_settings.xml
+index b5dcebf..54f448f 100644
+--- a/res/xml/security_dashboard_settings.xml
++++ b/res/xml/security_dashboard_settings.xml
+@@ -129,8 +129,8 @@
+     <Preference
+         android:order="60"
+         android:key="encryption_and_credential"
+-        android:title="@string/encryption_and_credential_settings_title"
+-        android:summary="@string/encryption_and_credential_settings_summary"
++        android:title="@string/credentials_title"
++        android:summary="@string/user_credentials_summary"
+         android:fragment="com.android.settings.security.EncryptionAndCredential" />
+ 
+     <Preference
+diff --git a/src/com/android/settings/security/EncryptionStatusPreferenceController.java b/src/com/android/settings/security/EncryptionStatusPreferenceController.java
+index ea38068..8427902 100644
+--- a/src/com/android/settings/security/EncryptionStatusPreferenceController.java
++++ b/src/com/android/settings/security/EncryptionStatusPreferenceController.java
+@@ -17,6 +17,7 @@
+ package com.android.settings.security;
+ 
+ import android.content.Context;
++import android.os.SystemProperties;
+ import android.os.UserManager;
+ import android.text.TextUtils;
+ 
+@@ -40,11 +41,16 @@ public class EncryptionStatusPreferenceController extends BasePreferenceControll
+         mUserManager = (UserManager) context.getSystemService(Context.USER_SERVICE);
+     }
+ 
++    /** False when the device can't be encrypted at all, such as a /data with no crypto flags. */
++    public static boolean isEncryptionSupported() {
++        return !"unsupported".equals(SystemProperties.get("ro.crypto.state"));
++    }
++
+     @Override
+     public int getAvailabilityStatus() {
+         if (TextUtils.equals(getPreferenceKey(), PREF_KEY_ENCRYPTION_DETAIL_PAGE) &&
+-                !mContext.getResources().getBoolean(
+-                R.bool.config_show_encryption_and_credentials_encryption_status)) {
++                (!isEncryptionSupported() || !mContext.getResources().getBoolean(
++                R.bool.config_show_encryption_and_credentials_encryption_status))) {
+             return UNSUPPORTED_ON_DEVICE;
+         }
+ 
+@@ -53,6 +59,15 @@ public class EncryptionStatusPreferenceController extends BasePreferenceControll
+ 
+     @Override
+     public void updateState(Preference preference) {
++        if (TextUtils.equals(getPreferenceKey(), PREF_KEY_ENCRYPTION_SECURITY_PAGE)) {
++            if (!isEncryptionSupported()) {
++                // Only the credential items are left on the page, so name it after them.
++                preference.setTitle(R.string.credentials_title);
++                preference.setSummary(R.string.user_credentials_summary);
++                return;
++            }
++            preference.setTitle(R.string.encryption_and_credential_settings_title);
++        }
+         final boolean encryptionEnabled = LockPatternUtils.isDeviceEncryptionEnabled();
+         if (encryptionEnabled) {
+             if (TextUtils.equals(getPreferenceKey(), PREF_KEY_ENCRYPTION_DETAIL_PAGE)) {
+-- 
+2.53.0
+

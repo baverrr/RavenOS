@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Back and Home only, together in the middle: no Recents button. -->
+    <string name="config_navBarLayout" translatable="false">left;back,home;right</string>
+</resources>

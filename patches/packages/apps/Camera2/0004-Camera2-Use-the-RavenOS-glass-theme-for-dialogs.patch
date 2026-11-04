@@ -1,0 +1,81 @@
+From 6fed17cbf792cbc167894d9ce2a06696cd518686 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 21:53:48 -0700
+Subject: [PATCH] Camera2: Use the RavenOS glass theme for dialogs
+
+The error dialogs (missing critical permissions, camera errors) are
+framework AlertDialogs, which the system now draws in the dark glass
+theme. The first-run location and aspect ratio dialogs are Camera2's
+own full-screen layouts in teal with black text, so point their colors
+at the system theme: the raven_bg background, raven_fg text and
+checkbox, and accent pill buttons (raven_accent with raven_on_accent
+text) instead of the white "cling" buttons. The colors come from the
+framework's raven_glass.xml, so they follow the selected theme variant.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I968429b896e0d1c5fc74faf3d3a45bbf15eb54bd
+---
+ res/drawable/raven_accent_button.xml | 11 +++++++++++
+ res/values/colors.xml                | 10 ++++++----
+ res/values/styles.xml                |  2 +-
+ 3 files changed, 18 insertions(+), 5 deletions(-)
+ create mode 100644 res/drawable/raven_accent_button.xml
+
+diff --git a/res/drawable/raven_accent_button.xml b/res/drawable/raven_accent_button.xml
+new file mode 100644
+index 0000000..d5289e6
+--- /dev/null
++++ b/res/drawable/raven_accent_button.xml
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- RavenOS: first-run dialog button as an accent pill, like the system glass theme. -->
++<ripple xmlns:android="http://schemas.android.com/apk/res/android"
++    android:color="#33000000">
++    <item>
++        <shape android:shape="rectangle">
++            <solid android:color="@*android:color/raven_accent" />
++            <corners android:radius="24dp" />
++        </shape>
++    </item>
++</ripple>
+diff --git a/res/values/colors.xml b/res/values/colors.xml
+index 3f0ea51..bd43836 100644
+--- a/res/values/colors.xml
++++ b/res/values/colors.xml
+@@ -68,14 +68,16 @@
+ 
+     <color name="grid_line">#33FFFFFF</color>
+     <color name="focus_outer_ring_color">#4CFFFFFF</color>
+-    <color name="fullscreen_dialog_background_color">@color/main_color_global</color>
+-    <color name="dialog_button_color">#FF76A7F9</color>
+-    <color name="dialog_text_color">@android:color/black</color>
++    <!-- RavenOS: the first-run dialogs use the system glass theme colors (raven_glass.xml in
++         the framework, which follows the selected theme variant). -->
++    <color name="fullscreen_dialog_background_color">@*android:color/raven_bg</color>
++    <color name="dialog_button_color">@*android:color/raven_accent</color>
++    <color name="dialog_text_color">@*android:color/raven_fg</color>
+ 
+     <color name="settings_cling_color">#2962FF</color>
+ 
+     <color name="mode_icon_hover_highlight">#2DFFFFFF</color>
+ 
+-    <color name="blue_button_text_color">#00838F</color>
++    <color name="blue_button_text_color">@*android:color/raven_on_accent</color>
+     <color name="ic_launcher_background">#4285f4</color>
+ </resources>
+diff --git a/res/values/styles.xml b/res/values/styles.xml
+index 4db6627..7241763 100644
+--- a/res/values/styles.xml
++++ b/res/values/styles.xml
+@@ -228,7 +228,7 @@
+     <style name="BlueButton">
+         <item name="android:layout_width">144dp</item>
+         <item name="android:layout_height">48dp</item>
+-        <item name="android:background">@drawable/button_cling</item>
++        <item name="android:background">@drawable/raven_accent_button</item>
+         <item name="android:textSize">14sp</item>
+         <item name="android:fontFamily">sans-serif-medium</item>
+         <item name="android:textColor">@color/blue_button_text_color</item>
+-- 
+2.53.0
+

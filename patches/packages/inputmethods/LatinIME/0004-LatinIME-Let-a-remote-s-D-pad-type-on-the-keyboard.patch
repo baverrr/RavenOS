@@ -1,0 +1,403 @@
+From da0f5b2d92b6ac069877e1f2bed3838d61124ba2 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 12:26:10 -0700
+Subject: [PATCH] LatinIME: Let a remote's D-pad type on the keyboard
+
+While the keyboard is shown, the arrows move a focused key, outlined in
+the accent, to the nearest key in that direction, and DPAD_CENTER types
+it as a tap would (shift, symbols, delete and enter included; long-press
+popups are not opened). The first press only shows the focus, which
+starts on the first letter, follows layout changes to the nearest key,
+and hides again on touch. Both the down and the up of each key used are
+consumed; with the keyboard hidden the keys reach the app as before.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: Ib71bca8a36f1d85117f6cfd0e629e10bc55b8fc1
+---
+ .../keyboard/MainKeyboardView.java            |  66 ++++++
+ .../inputmethod/keyboard/RemoteKeyFocus.java  | 206 ++++++++++++++++++
+ .../android/inputmethod/latin/LatinIME.java   |  19 ++
+ 3 files changed, 291 insertions(+)
+ create mode 100644 java/src/com/android/inputmethod/keyboard/RemoteKeyFocus.java
+
+diff --git a/java/src/com/android/inputmethod/keyboard/MainKeyboardView.java b/java/src/com/android/inputmethod/keyboard/MainKeyboardView.java
+index 7e25bfb..e140fdc 100644
+--- a/java/src/com/android/inputmethod/keyboard/MainKeyboardView.java
++++ b/java/src/com/android/inputmethod/keyboard/MainKeyboardView.java
+@@ -31,6 +31,7 @@ import android.preference.PreferenceManager;
+ import android.text.TextUtils;
+ import android.util.AttributeSet;
+ import android.util.Log;
++import android.view.KeyEvent;
+ import android.view.LayoutInflater;
+ import android.view.MotionEvent;
+ import android.view.View;
+@@ -142,6 +143,8 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
+     private final DrawingPreviewPlacerView mDrawingPreviewPlacerView;
+     // RavenOS: the glass theme's backdrop, whose glow follows touches (null on other themes)
+     private GlowBackdrop mGlowBackdrop;
++    // RavenOS: the key a remote's D-pad points at.
++    private final RemoteKeyFocus mRemoteFocus;
+     private final int[] mOriginCoords = CoordinateUtils.newInstance();
+     private final GestureFloatingTextDrawingPreview mGestureFloatingTextDrawingPreview;
+     private final GestureTrailsDrawingPreview mGestureTrailsDrawingPreview;
+@@ -258,6 +261,8 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
+         mSlidingKeyInputDrawingPreview.setDrawingView(drawingPreviewPlacerView);
+         mainKeyboardViewAttr.recycle();
+ 
++        mRemoteFocus = new RemoteKeyFocus(context);
++
+         // RavenOS: on the glass keyboard theme the backdrop glow follows touches.
+         final int touchGlow = context.getColor(R.color.raven_touch_glow);
+         if (KeyboardTheme.getKeyboardTheme(context).mThemeId == KeyboardTheme.THEME_ID_RAVEN_GLASS
+@@ -405,6 +410,7 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
+                 keyboard, -getPaddingLeft(), -getPaddingTop() + getVerticalCorrection());
+         PointerTracker.setKeyDetector(mKeyDetector);
+         mMoreKeysKeyboardCache.clear();
++        mRemoteFocus.setKeyboard(keyboard);
+ 
+         mSpaceKey = keyboard.getKey(Constants.CODE_SPACE);
+         final int keyHeight = keyboard.mMostCommonKeyHeight - keyboard.mVerticalGap;
+@@ -699,6 +705,61 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
+         mTimerHandler.cancelDoubleTapShiftKeyTimer();
+     }
+ 
++    /**
++     * RavenOS: lets a remote type on the keyboard. The arrows move a focused key and
++     * DPAD_CENTER types it, as a tap would; a key's long-press popup is not opened.
++     *
++     * @return whether the key was used
++     */
++    public boolean onRemoteKeyDown(final KeyEvent event) {
++        if (getKeyboard() == null || !isShown()) {
++            return false;
++        }
++        if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER) {
++            // Like the arrows, the first press only shows the focus.
++            final boolean wasVisible = mRemoteFocus.isVisible();
++            final Key key = mRemoteFocus.show();
++            if (wasVisible && key != null && event.getRepeatCount() == 0) {
++                typeKey(key);
++            }
++            invalidate();
++            return true;
++        }
++        if (mRemoteFocus.move(event.getKeyCode())) {
++            invalidate();
++            return true;
++        }
++        return false;
++    }
++
++    /** Starts the next keyboard with the remote's focus on its first letter. */
++    public void resetRemoteFocus() {
++        mRemoteFocus.reset();
++        invalidate();
++    }
++
++    private void typeKey(final Key key) {
++        final KeyboardActionListener listener = mKeyboardActionListener;
++        if (listener == null) {
++            return;
++        }
++        final int code = key.getCode();
++        listener.onPressKey(code, 0 /* repeatCount */, true /* isSinglePointer */);
++        if (code == Constants.CODE_OUTPUT_TEXT) {
++            listener.onTextInput(key.getOutputText());
++        } else if (code != Constants.CODE_UNSPECIFIED) {
++            listener.onCodeInput(code, Constants.NOT_A_COORDINATE, Constants.NOT_A_COORDINATE,
++                    false /* isKeyRepeat */);
++        }
++        listener.onReleaseKey(code, false /* withSliding */);
++    }
++
++    @Override
++    protected void onDraw(final Canvas canvas) {
++        super.onDraw(canvas);
++        mRemoteFocus.draw(canvas, getPaddingLeft(), getPaddingTop());
++    }
++
+     public boolean isInDoubleTapShiftKeyTimeout() {
+         return mTimerHandler.isInDoubleTapShiftKeyTimeout();
+     }
+@@ -711,6 +772,11 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
+         if (mGlowBackdrop != null) {
+             mGlowBackdrop.onTouchEvent(event);
+         }
++        if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
++            // Touch typing again: hide the remote's focus.
++            mRemoteFocus.hide();
++            invalidate();
++        }
+         if (mNonDistinctMultitouchHelper != null) {
+             if (event.getPointerCount() > 1 && mTimerHandler.isInKeyRepeat()) {
+                 // Key repeating timer will be canceled if 2 or more keys are in action.
+diff --git a/java/src/com/android/inputmethod/keyboard/RemoteKeyFocus.java b/java/src/com/android/inputmethod/keyboard/RemoteKeyFocus.java
+new file mode 100644
+index 0000000..489b441
+--- /dev/null
++++ b/java/src/com/android/inputmethod/keyboard/RemoteKeyFocus.java
+@@ -0,0 +1,206 @@
++/*
++ * SPDX-FileCopyrightText: 2026 RavenOS
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package com.android.inputmethod.keyboard;
++
++import android.content.Context;
++import android.graphics.Canvas;
++import android.graphics.Paint;
++import android.graphics.RectF;
++import android.view.KeyEvent;
++
++import com.android.inputmethod.latin.R;
++
++/**
++ * The key a remote's D-pad points at. The arrows move it to the nearest key in that direction
++ * and the owner types it on DPAD_CENTER. It is only drawn after a remote key was used, and
++ * hidden again on touch, so touch typing looks the same as before.
++ */
++final class RemoteKeyFocus {
++    /** Alpha of the accent fill behind the focused key. */
++    private static final int FILL_ALPHA = 0x29;
++
++    private final Paint mFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
++    private final Paint mStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
++    private final float mRadius;
++    private final RectF mRect = new RectF();
++
++    private Keyboard mKeyboard;
++    private Key mKey;
++    private boolean mVisible;
++
++    RemoteKeyFocus(final Context context) {
++        final float density = context.getResources().getDisplayMetrics().density;
++        final int accent = context.getColor(R.color.raven_accent);
++        mFillPaint.setColor((FILL_ALPHA << 24) | (accent & 0xFFFFFF));
++        mStrokePaint.setColor(accent);
++        mStrokePaint.setStyle(Paint.Style.STROKE);
++        mStrokePaint.setStrokeWidth(2 * density);
++        mRadius = context.getResources().getDimension(R.dimen.raven_key_radius);
++    }
++
++    /**
++     * Follows a layout change (shift, symbols, a new field): the focus stays on the key nearest
++     * to where it was, or starts on the first letter.
++     */
++    void setKeyboard(final Keyboard keyboard) {
++        final Key previous = mKey;
++        mKeyboard = keyboard;
++        mKey = null;
++        if (keyboard == null) {
++            return;
++        }
++        mKey = previous != null ? nearest(centerX(previous), centerY(previous))
++                : firstLetter();
++    }
++
++    /** Starts the next keyboard on its first letter, and hides the focus until a remote key. */
++    void reset() {
++        mKey = null;
++        mVisible = false;
++        if (mKeyboard != null) {
++            mKey = firstLetter();
++        }
++    }
++
++    void hide() {
++        mVisible = false;
++    }
++
++    boolean isVisible() {
++        return mVisible;
++    }
++
++    /** The focused key, made visible; null if the keyboard has no keys. */
++    Key show() {
++        mVisible = true;
++        return mKey;
++    }
++
++    /** Moves the focus for an arrow key. Returns false for any other key. */
++    boolean move(final int keyCode) {
++        if (keyCode != KeyEvent.KEYCODE_DPAD_UP && keyCode != KeyEvent.KEYCODE_DPAD_DOWN
++                && keyCode != KeyEvent.KEYCODE_DPAD_LEFT
++                && keyCode != KeyEvent.KEYCODE_DPAD_RIGHT) {
++            return false;
++        }
++        final boolean wasVisible = mVisible;
++        if (show() == null || !wasVisible) {
++            // The first press only shows where the focus is.
++            return true;
++        }
++        final Key next = next(keyCode);
++        if (next != null) {
++            mKey = next;
++        }
++        return true;
++    }
++
++    void draw(final Canvas canvas, final int paddingLeft, final int paddingTop) {
++        if (!mVisible || mKey == null) {
++            return;
++        }
++        final float inset = mStrokePaint.getStrokeWidth() / 2;
++        final float left = paddingLeft + mKey.getDrawX() + inset;
++        final float top = paddingTop + mKey.getY() + inset;
++        mRect.set(left, top, left + mKey.getDrawWidth() - 2 * inset,
++                top + mKey.getHeight() - 2 * inset);
++        canvas.drawRoundRect(mRect, mRadius, mRadius, mFillPaint);
++        canvas.drawRoundRect(mRect, mRadius, mRadius, mStrokePaint);
++    }
++
++    private Key next(final int keyCode) {
++        final int x = centerX(mKey);
++        final int y = centerY(mKey);
++        final int halfHeight = mKey.getHeight() / 2;
++        final boolean vertical = keyCode == KeyEvent.KEYCODE_DPAD_UP
++                || keyCode == KeyEvent.KEYCODE_DPAD_DOWN;
++        final int sign = keyCode == KeyEvent.KEYCODE_DPAD_UP
++                || keyCode == KeyEvent.KEYCODE_DPAD_LEFT ? -1 : 1;
++        // Up/down: the nearest row in that direction, then the key closest horizontally.
++        // Left/right: the closest key in the same row.
++        int bestRow = Integer.MAX_VALUE;
++        if (vertical) {
++            for (final Key key : mKeyboard.getSortedKeys()) {
++                final int dy = (centerY(key) - y) * sign;
++                if (isFocusable(key) && dy > halfHeight) {
++                    bestRow = Math.min(bestRow, dy);
++                }
++            }
++        }
++        Key best = null;
++        int bestDistance = Integer.MAX_VALUE;
++        for (final Key key : mKeyboard.getSortedKeys()) {
++            if (!isFocusable(key) || key == mKey) {
++                continue;
++            }
++            final int dx = centerX(key) - x;
++            final int dy = centerY(key) - y;
++            final int distance;
++            if (vertical) {
++                if (dy * sign <= halfHeight || dy * sign > bestRow + halfHeight / 2) {
++                    continue;
++                }
++                distance = Math.abs(dx);
++            } else {
++                if (Math.abs(dy) >= halfHeight || dx * sign <= 0) {
++                    continue;
++                }
++                distance = Math.abs(dx);
++            }
++            if (distance < bestDistance) {
++                best = key;
++                bestDistance = distance;
++            }
++        }
++        return best;
++    }
++
++    private Key firstLetter() {
++        Key first = null;
++        for (final Key key : mKeyboard.getSortedKeys()) {
++            if (!isFocusable(key)) {
++                continue;
++            }
++            if (Character.isLetter(key.getCode())) {
++                return key;
++            }
++            if (first == null) {
++                first = key;
++            }
++        }
++        return first;
++    }
++
++    private Key nearest(final int x, final int y) {
++        Key best = null;
++        long bestDistance = Long.MAX_VALUE;
++        for (final Key key : mKeyboard.getSortedKeys()) {
++            if (!isFocusable(key)) {
++                continue;
++            }
++            final long dx = centerX(key) - x;
++            final long dy = centerY(key) - y;
++            final long distance = dx * dx + dy * dy;
++            if (distance < bestDistance) {
++                best = key;
++                bestDistance = distance;
++            }
++        }
++        return best;
++    }
++
++    private static boolean isFocusable(final Key key) {
++        return !key.isSpacer() && key.isEnabled();
++    }
++
++    private static int centerX(final Key key) {
++        return key.getDrawX() + key.getDrawWidth() / 2;
++    }
++
++    private static int centerY(final Key key) {
++        return key.getY() + key.getHeight() / 2;
++    }
++}
+diff --git a/java/src/com/android/inputmethod/latin/LatinIME.java b/java/src/com/android/inputmethod/latin/LatinIME.java
+index 737bd0d..142b22f 100644
+--- a/java/src/com/android/inputmethod/latin/LatinIME.java
++++ b/java/src/com/android/inputmethod/latin/LatinIME.java
+@@ -104,6 +104,7 @@ import com.android.inputmethod.latin.utils.ViewLayoutUtils;
+ import java.io.FileDescriptor;
+ import java.io.PrintWriter;
+ import java.util.ArrayList;
++import java.util.HashSet;
+ import java.util.List;
+ import java.util.Locale;
+ import java.util.concurrent.TimeUnit;
+@@ -1086,6 +1087,11 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
+ 
+     void onFinishInputViewInternal(final boolean finishingInput) {
+         super.onFinishInputView(finishingInput);
++        final MainKeyboardView mainKeyboardView = mKeyboardSwitcher.getMainKeyboardView();
++        if (mainKeyboardView != null) {
++            mainKeyboardView.resetRemoteFocus();
++        }
++        mRemoteKeysDown.clear();
+         cleanupInternalStateForFinishInput();
+     }
+ 
+@@ -1748,9 +1754,19 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
+         return newDecoder;
+     }
+ 
++    // RavenOS: D-pad keys the keyboard used for remote typing, so their key-ups are kept too.
++    private final HashSet<Integer> mRemoteKeysDown = new HashSet<>();
++
+     // Hooks for hardware keyboard
+     @Override
+     public boolean onKeyDown(final int keyCode, final KeyEvent keyEvent) {
++        // RavenOS: while the keyboard is shown, a remote's D-pad types on it.
++        final MainKeyboardView mainKeyboardView = mKeyboardSwitcher.getMainKeyboardView();
++        if (isInputViewShown() && mainKeyboardView != null
++                && mainKeyboardView.onRemoteKeyDown(keyEvent)) {
++            mRemoteKeysDown.add(keyCode);
++            return true;
++        }
+         if (mEmojiAltPhysicalKeyDetector == null) {
+             mEmojiAltPhysicalKeyDetector = new EmojiAltPhysicalKeyDetector(
+                     getApplicationContext().getResources());
+@@ -1776,6 +1792,9 @@ public class LatinIME extends InputMethodService implements KeyboardActionListen
+ 
+     @Override
+     public boolean onKeyUp(final int keyCode, final KeyEvent keyEvent) {
++        if (mRemoteKeysDown.remove(keyCode)) {
++            return true;
++        }
+         if (mEmojiAltPhysicalKeyDetector == null) {
+             mEmojiAltPhysicalKeyDetector = new EmojiAltPhysicalKeyDetector(
+                     getApplicationContext().getResources());
+-- 
+2.53.0
+

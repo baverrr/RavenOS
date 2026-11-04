@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="RavenHome" parent="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowShowWallpaper">false</item>
+        <item name="android:colorBackgroundCacheHint">@null</item>
+        <item name="android:colorAccent">@color/raven_accent</item>
+        <item name="android:fontFamily">@font/plex_regular</item>
+        <item name="android:alertDialogTheme">@style/RavenDialog</item>
+    </style>
+
+    <!-- Alarms & timers (and All apps): the glass backdrop of Settings behind glass cards. -->
+    <style name="RavenScreen" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <item name="android:windowBackground">@drawable/settings_backdrop</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:colorAccent">@color/raven_accent</item>
+        <item name="android:fontFamily">@font/plex_regular</item>
+        <item name="android:alertDialogTheme">@style/RavenDialog</item>
+        <item name="android:timePickerDialogTheme">@style/RavenDialog</item>
+    </style>
+
+    <!-- All apps: same glass backdrop as RavenScreen; kept as its own name for the manifest. -->
+    <style name="RavenApps" parent="RavenScreen" />
+
+    <style name="RavenRing" parent="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@drawable/settings_backdrop</item>
+        <item name="android:colorAccent">@color/raven_accent</item>
+        <item name="android:fontFamily">@font/plex_regular</item>
+    </style>
+
+    <!-- The RavenOS page, opened from Android Settings: same glass look as Settings
+         (colors from settings_glass.xml, which the glass theme variant overlays). -->
+    <style name="RavenSettings" parent="@android:style/Theme.DeviceDefault.Settings">
+        <item name="android:windowBackground">@drawable/settings_backdrop</item>
+        <item name="android:colorBackground">@color/settings_bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:actionBarStyle">@style/RavenSettings.ActionBar</item>
+        <item name="android:colorAccent">@color/settings_accent</item>
+        <item name="android:colorControlActivated">@color/settings_accent</item>
+        <item name="android:textColorPrimary">@color/settings_fg</item>
+        <item name="android:textColorSecondary">@color/settings_fg_2</item>
+        <item name="android:preferenceCategoryStyle">@style/RavenSettings.Category</item>
+        <item name="android:alertDialogTheme">@style/RavenSettingsDialog</item>
+    </style>
+
+    <style name="RavenSettings.ActionBar" parent="@android:style/Widget.DeviceDefault.ActionBar.Solid">
+        <item name="android:background">@android:color/transparent</item>
+        <item name="android:elevation">0dp</item>
+    </style>
+
+    <style name="RavenSettings.Category" parent="@*android:style/Preference.Material.Category">
+        <item name="android:layout">@layout/settings_category</item>
+    </style>
+
+    <!-- Dialogs stay on a solid surface: Android 11 can't blur behind them. -->
+    <style name="RavenSettingsDialog" parent="@android:style/Theme.DeviceDefault.Dialog.Alert">
+        <item name="android:colorAccent">@color/settings_accent</item>
+        <item name="android:colorBackground">@color/settings_surface</item>
+        <item name="android:textColorPrimary">@color/settings_fg</item>
+        <item name="android:textColorSecondary">@color/settings_fg_2</item>
+    </style>
+
+    <style name="RavenDialog" parent="@android:style/Theme.DeviceDefault.Dialog.Alert">
+        <item name="android:colorAccent">@color/raven_accent</item>
+        <item name="android:fontFamily">@font/plex_regular</item>
+    </style>
+
+    <!-- Type scale (IBM Plex Sans). -->
+    <style name="Raven" />
+
+    <style name="Raven.ClockBig">
+        <item name="android:fontFamily">@font/plex_thin</item>
+        <item name="android:textSize">150sp</item>
+        <item name="android:textColor">@color/raven_text</item>
+        <item name="android:includeFontPadding">false</item>
+        <item name="android:shadowColor">@color/raven_shadow</item>
+        <item name="android:shadowRadius">16</item>
+    </style>
+
+    <style name="Raven.ClockAmbient">
+        <item name="android:fontFamily">@font/plex_light</item>
+        <item name="android:textSize">48sp</item>
+        <item name="android:textColor">@color/raven_text</item>
+        <item name="android:shadowColor">@color/raven_shadow</item>
+        <item name="android:shadowRadius">14</item>
+    </style>
+
+    <style name="Raven.Title">
+        <item name="android:fontFamily">@font/plex_light</item>
+        <item name="android:textSize">30sp</item>
+        <item name="android:textColor">@color/raven_text</item>
+        <item name="android:shadowColor">@color/raven_shadow</item>
+        <item name="android:shadowRadius">10</item>
+    </style>
+
+    <!-- Date under the clock: small spaced capitals in the theme's second text color, so
+         the home screen uses the glass theme's greys (fg / fg_2 / fg_3) instead of plain
+         white. The accent stays for controls, as in Obsidian. -->
+    <style name="Raven.Date">
+        <item name="android:fontFamily">@font/plex_medium</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.12</item>
+        <item name="android:textColor">@color/raven_text_dim</item>
+        <item name="android:shadowColor">@color/raven_shadow</item>
+        <item name="android:shadowRadius">10</item>
+    </style>
+
+    <style name="Raven.Body">
+        <item name="android:fontFamily">@font/plex_regular</item>
+        <item name="android:textSize">20sp</item>
+        <item name="android:textColor">@color/raven_text</item>
+    </style>
+
+    <style name="Raven.Caption">
+        <item name="android:fontFamily">@font/plex_regular</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/raven_text_dim</item>
+    </style>
+
+    <style name="Raven.Label">
+        <item name="android:fontFamily">@font/plex_medium</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textColor">@color/raven_text</item>
+    </style>
+</resources>

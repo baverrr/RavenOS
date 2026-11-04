@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Camera2 refuses to start without camera, microphone and storage ("critical
+     permissions"). Storage is a restricted permission that can't be granted by hand unless
+     the app is allowlisted; a default grant allowlists it. Not fixed: the user can still
+     turn any of them off. -->
+<exceptions>
+    <exception package="com.android.camera2">
+        <permission name="android.permission.CAMERA" fixed="false"/>
+        <permission name="android.permission.RECORD_AUDIO" fixed="false"/>
+        <permission name="android.permission.READ_EXTERNAL_STORAGE" fixed="false"/>
+        <permission name="android.permission.WRITE_EXTERNAL_STORAGE" fixed="false"/>
+    </exception>
+</exceptions>

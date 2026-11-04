@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- RavenOS is dark only: the glass Settings theme is drawn for a dark backdrop. -->
+    <integer name="config_defaultNightMode">2</integer>
+
+    <!-- The rear jack feeds an amp, so the headphone hearing-safety limit would only get in the
+         way: it holds the volume to about 40 % until a warning is accepted, every 20 hours. -->
+    <bool name="config_safe_media_volume_enabled">false</bool>
+</resources>

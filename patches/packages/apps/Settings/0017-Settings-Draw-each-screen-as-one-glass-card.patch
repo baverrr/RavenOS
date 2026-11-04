@@ -1,0 +1,85 @@
+From 8c7b8ceb2f26db761e10f19ec6a5637add643cf1 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 15:34:34 -0700
+Subject: [PATCH] Settings: Draw each screen as one glass card
+
+Category titles become small labels inside the card instead of
+breaking it into separate cards, and the homepage no longer splits
+into groups, so every screen reads as one continuous list.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I57e2003a99c6ded588b7966c7792c2c13546c7ac
+---
+ .../settings/homepage/TopLevelSettings.java       |  8 --------
+ .../settings/widget/GlassGroupDecoration.java     | 15 +++++++++------
+ 2 files changed, 9 insertions(+), 14 deletions(-)
+
+diff --git a/src/com/android/settings/homepage/TopLevelSettings.java b/src/com/android/settings/homepage/TopLevelSettings.java
+index fabd1ca..8a49506 100644
+--- a/src/com/android/settings/homepage/TopLevelSettings.java
++++ b/src/com/android/settings/homepage/TopLevelSettings.java
+@@ -35,7 +35,6 @@ import com.android.settings.support.SupportPreferenceController;
+ import com.android.settingslib.core.instrumentation.Instrumentable;
+ import com.android.settingslib.search.SearchIndexable;
+ 
+-import java.util.Set;
+ 
+ @SearchIndexable(forTarget = MOBILE)
+ public class TopLevelSettings extends DashboardFragment implements
+@@ -50,13 +49,6 @@ public class TopLevelSettings extends DashboardFragment implements
+         setArguments(args);
+     }
+ 
+-    @Override
+-    protected Set<String> getGlassGroupStartKeys() {
+-        // RavenOS: split the homepage into cards the way it is grouped on iOS.
+-        return Set.of("top_level_apps_and_notifs", "top_level_privacy",
+-                "top_level_accounts", "top_level_system");
+-    }
+-
+     @Override
+     protected int getPreferenceScreenResId() {
+         return R.xml.top_level_settings;
+diff --git a/src/com/android/settings/widget/GlassGroupDecoration.java b/src/com/android/settings/widget/GlassGroupDecoration.java
+index 0028a04..0c58fd2 100644
+--- a/src/com/android/settings/widget/GlassGroupDecoration.java
++++ b/src/com/android/settings/widget/GlassGroupDecoration.java
+@@ -31,9 +31,10 @@ import java.util.Collections;
+ import java.util.Set;
+ 
+ /**
+- * Draws each run of preferences between category headers as one rounded glass card, with
+- * hairline separators inset to the title, and keeps the list in a centred column on wide
+- * screens. Category titles, footers and entity headers sit outside the cards.
++ * Draws a screen's preferences as one rounded glass card, with hairline separators inset to
++ * the title, and keeps the list in a centred column on wide screens. Category titles are small
++ * labels inside the card rather than breaks between cards; footers and entity headers sit
++ * outside it.
+  *
+  * <p>The row that has focus from a remote or keyboard gets an accent outline, rounded like
+  * the card at the group's ends, in place of the stock square tint.
+@@ -199,7 +200,10 @@ public class GlassGroupDecoration extends RecyclerView.ItemDecoration {
+                 inRun = true;
+             } else {
+                 mRun.bottom = bottom;
+-                drawSeparator(canvas, child, top);
++                // A category title already marks the start of its rows.
++                if (!(getItem(parent, position - 1) instanceof PreferenceCategory)) {
++                    drawSeparator(canvas, child, top);
++                }
+             }
+             if (endsGroup(parent, position)) {
+                 drawRun(canvas, true);
+@@ -251,8 +255,7 @@ public class GlassGroupDecoration extends RecyclerView.ItemDecoration {
+     }
+ 
+     private static boolean isCard(Preference preference) {
+-        return !(preference instanceof PreferenceCategory)
+-                && !(preference instanceof FooterPreference)
++        return !(preference instanceof FooterPreference)
+                 && !isHeader(preference);
+     }
+ 
+-- 
+2.53.0
+

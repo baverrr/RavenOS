@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ring around a glass card (or a tile in All apps) while the remote's D-pad has it focused. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="rectangle">
+            <stroke android:width="3dp" android:color="@color/raven_focus" />
+            <corners android:radius="@dimen/settings_card_radius" />
+        </shape>
+    </item>
+</selector>

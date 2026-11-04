@@ -1,0 +1,310 @@
+From f6f6c63a473c7fec75c55fdbd4de27b3de592b8b Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 10:01:26 -0700
+Subject: [PATCH] Settings: Make remote navigation visible and audible
+
+- Outline the focused row in a glass card with the accent, rounded like
+  the card at the ends of a group, and drop the ripple's square focus
+  tint that spilled past the card's corners.
+- Play the navigation tick when an arrow key moves focus inside a view
+  that handles the key itself, such as the homepage's scroll view; the
+  framework only plays it for focus moves it makes on its own.
+- Scroll the homepage search bar away with the list and fade it, so it
+  no longer sits over the cards; it shows again at the top.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I112f19af3856c7b12716b3ea09293bd062e6a313
+---
+ .../settings/core/SettingsBaseActivity.java   | 10 +++
+ .../homepage/SettingsHomepageActivity.java    | 27 +++++++
+ .../settings/widget/GlassGroupDecoration.java | 73 +++++++++++++++++++
+ .../settings/widget/NavigationSound.java      | 54 ++++++++++++++
+ 4 files changed, 164 insertions(+)
+ create mode 100644 src/com/android/settings/widget/NavigationSound.java
+
+diff --git a/src/com/android/settings/core/SettingsBaseActivity.java b/src/com/android/settings/core/SettingsBaseActivity.java
+index 68c5ba2..572e544 100644
+--- a/src/com/android/settings/core/SettingsBaseActivity.java
++++ b/src/com/android/settings/core/SettingsBaseActivity.java
+@@ -30,6 +30,7 @@ import android.os.Bundle;
+ import android.text.TextUtils;
+ import android.util.ArraySet;
+ import android.util.Log;
++import android.view.KeyEvent;
+ import android.view.LayoutInflater;
+ import android.view.View;
+ import android.view.ViewGroup;
+@@ -42,6 +43,7 @@ import com.android.settings.R;
+ import com.android.settings.SubSettings;
+ import com.android.settings.dashboard.CategoryManager;
+ import com.android.settings.widget.GlowBackdrop;
++import com.android.settings.widget.NavigationSound;
+ import com.android.settingslib.drawer.Tile;
+ 
+ import com.google.android.setupcompat.util.WizardManagerHelper;
+@@ -304,4 +306,12 @@ public class SettingsBaseActivity extends FragmentActivity {
+             updateCategories(true /* fromBroadcast */);
+         }
+     }
++
++    @Override
++    public boolean dispatchKeyEvent(KeyEvent event) {
++        final View focusBefore = getCurrentFocus();
++        final boolean handled = super.dispatchKeyEvent(event);
++        NavigationSound.afterKey(getWindow(), event, focusBefore, handled);
++        return handled;
++    }
+ }
+diff --git a/src/com/android/settings/homepage/SettingsHomepageActivity.java b/src/com/android/settings/homepage/SettingsHomepageActivity.java
+index 47ed50e..1d61275 100644
+--- a/src/com/android/settings/homepage/SettingsHomepageActivity.java
++++ b/src/com/android/settings/homepage/SettingsHomepageActivity.java
+@@ -29,6 +29,7 @@ import android.widget.ImageView;
+ import android.widget.Toolbar;
+ 
+ import androidx.annotation.VisibleForTesting;
++import androidx.core.widget.NestedScrollView;
+ import androidx.fragment.app.Fragment;
+ import androidx.fragment.app.FragmentActivity;
+ import androidx.fragment.app.FragmentManager;
+@@ -41,6 +42,7 @@ import com.android.settings.homepage.contextualcards.ContextualCardsFragment;
+ import com.android.settings.overlay.FeatureFactory;
+ import com.android.settings.widget.GlassGroupDecoration;
+ import com.android.settings.widget.GlowBackdrop;
++import com.android.settings.widget.NavigationSound;
+ 
+ import java.util.ArrayList;
+ 
+@@ -78,6 +80,11 @@ public class SettingsHomepageActivity extends FragmentActivity {
+                 v.post(() -> v.setPaddingRelative(side, 0, side, 0));
+             }
+         });
++        // RavenOS: the glass search bar would sit over the scrolling cards, so it scrolls
++        // away and fades with the list, and only shows at the top.
++        final NestedScrollView scroller = findViewById(R.id.main_content_scrollable_container);
++        scroller.setOnScrollChangeListener((NestedScrollView.OnScrollChangeListener)
++                (v, x, y, oldX, oldY) -> followScroll(appBar, y));
+ 
+         final Toolbar toolbar = findViewById(R.id.search_action_bar);
+         FeatureFactory.getFactory(this).getSearchFeatureProvider()
+@@ -136,6 +143,18 @@ public class SettingsHomepageActivity extends FragmentActivity {
+         });
+     }
+ 
++    private static void followScroll(View appBar, int scrollY) {
++        final int height = appBar.getHeight();
++        if (height == 0) {
++            return;
++        }
++        final int offset = Math.min(scrollY, height);
++        appBar.setTranslationY(-offset);
++        appBar.setAlpha(1f - (float) offset / height);
++        // Invisible once fully away, so a remote's focus doesn't land on it.
++        appBar.setVisibility(offset < height ? View.VISIBLE : View.INVISIBLE);
++    }
++
+     private static View firstVisibleFocusable(View container) {
+         final ArrayList<View> focusables = new ArrayList<>();
+         container.addFocusables(focusables, View.FOCUS_DOWN);
+@@ -151,4 +170,12 @@ public class SettingsHomepageActivity extends FragmentActivity {
+         }
+         return first;
+     }
++
++    @Override
++    public boolean dispatchKeyEvent(KeyEvent event) {
++        final View focusBefore = getCurrentFocus();
++        final boolean handled = super.dispatchKeyEvent(event);
++        NavigationSound.afterKey(getWindow(), event, focusBefore, handled);
++        return handled;
++    }
+ }
+diff --git a/src/com/android/settings/widget/GlassGroupDecoration.java b/src/com/android/settings/widget/GlassGroupDecoration.java
+index b309f7c..8b1935e 100644
+--- a/src/com/android/settings/widget/GlassGroupDecoration.java
++++ b/src/com/android/settings/widget/GlassGroupDecoration.java
+@@ -6,11 +6,16 @@
+ package com.android.settings.widget;
+ 
+ import android.content.Context;
++import android.content.res.ColorStateList;
+ import android.content.res.Resources;
+ import android.graphics.Canvas;
++import android.graphics.Color;
+ import android.graphics.Paint;
++import android.graphics.Path;
+ import android.graphics.Rect;
+ import android.graphics.RectF;
++import android.graphics.drawable.Drawable;
++import android.graphics.drawable.RippleDrawable;
+ import android.view.View;
+ 
+ import androidx.preference.Preference;
+@@ -28,6 +33,9 @@ import java.util.Set;
+  * Draws each run of preferences between category headers as one rounded glass card, with
+  * hairline separators inset to the title, and keeps the list in a centred column on wide
+  * screens. Category titles and footers sit outside the cards.
++ *
++ * <p>The row that has focus from a remote or keyboard gets an accent outline, rounded like
++ * the card at the group's ends, in place of the stock square tint.
+  */
+ public class GlassGroupDecoration extends RecyclerView.ItemDecoration {
+ 
+@@ -39,6 +47,14 @@ public class GlassGroupDecoration extends RecyclerView.ItemDecoration {
+     private final float mStrokeWidth;
+     private final int mGroupGap;
+     private final RectF mRun = new RectF();
++    private final Paint mFocusFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
++    private final Paint mFocusStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
++    private final float mFocusInset;
++    private final float mFocusInnerRadius;
++    private final Path mFocusPath = new Path();
++    private final RectF mFocusRect = new RectF();
++    private final float[] mFocusRadii = new float[8];
++    private final ColorStateList mRowRipple;
+ 
+     public GlassGroupDecoration(Context context) {
+         this(context, Collections.emptySet());
+@@ -59,8 +75,28 @@ public class GlassGroupDecoration extends RecyclerView.ItemDecoration {
+         mStrokePaint.setStyle(Paint.Style.STROKE);
+         mStrokePaint.setStrokeWidth(mStrokeWidth);
+         mSeparatorPaint.setColor(context.getColor(R.color.raven_separator));
++
++        final float density = res.getDisplayMetrics().density;
++        final int accent = context.getColor(R.color.raven_accent);
++        mFocusInset = 3 * density;
++        mFocusInnerRadius = 10 * density;
++        mFocusFillPaint.setColor((FOCUS_FILL_ALPHA << 24) | (accent & 0xFFFFFF));
++        mFocusStrokePaint.setColor(accent);
++        mFocusStrokePaint.setStyle(Paint.Style.STROKE);
++        mFocusStrokePaint.setStrokeWidth(2 * density);
++        // Keep the tap ripple but drop its focus tint; onDrawOver shows focus instead.
++        final int ripple = context.getColor(R.color.raven_ripple);
++        mRowRipple = new ColorStateList(
++                new int[][] {
++                        {android.R.attr.state_pressed},
++                        {android.R.attr.state_focused},
++                        {}},
++                new int[] {ripple, Color.TRANSPARENT, ripple});
+     }
+ 
++    /** Alpha of the accent fill behind the focused row. */
++    private static final int FOCUS_FILL_ALPHA = 0x29;
++
+     /** Adds the decoration to {@code list} and keeps its column width in step with the list. */
+     public void attachTo(RecyclerView list) {
+         list.addItemDecoration(this);
+@@ -69,6 +105,9 @@ public class GlassGroupDecoration extends RecyclerView.ItemDecoration {
+                 list.invalidateItemDecorations();
+             }
+         });
++        // A row's own redraw doesn't redraw decorations, so follow focus moves explicitly.
++        list.getViewTreeObserver().addOnGlobalFocusChangeListener(
++                (oldFocus, newFocus) -> list.invalidate());
+     }
+ 
+     /** Side margin that centres content in a column no wider than raven_content_max_width. */
+@@ -93,6 +132,40 @@ public class GlassGroupDecoration extends RecyclerView.ItemDecoration {
+         if (isCard(preference) && endsGroup(parent, position)) {
+             outRect.bottom = mGroupGap;
+         }
++        if (isCard(preference)) {
++            final Drawable background = view.getBackground();
++            if (background instanceof RippleDrawable) {
++                ((RippleDrawable) background).setColor(mRowRipple);
++            }
++        }
++    }
++
++    @Override
++    public void onDrawOver(Canvas canvas, RecyclerView parent, RecyclerView.State state) {
++        final View focused = parent.getFocusedChild();
++        if (focused == null || !focused.isFocused()) {
++            return;
++        }
++        final int position = parent.getChildAdapterPosition(focused);
++        final Preference preference = getItem(parent, position);
++        if (preference == null || !isCard(preference)) {
++            return;
++        }
++        final float top = focused.getTop() + focused.getTranslationY();
++        mFocusRect.set(focused.getLeft() + mFocusInset, top + mFocusInset,
++                focused.getRight() - mFocusInset,
++                focused.getBottom() + focused.getTranslationY() - mFocusInset);
++        final float outer = mRadius - mFocusInset;
++        final float topRadius = startsGroup(parent, position) ? outer : mFocusInnerRadius;
++        final float bottomRadius = endsGroup(parent, position) ? outer : mFocusInnerRadius;
++        for (int i = 0; i < 4; i++) {
++            mFocusRadii[i] = topRadius;
++            mFocusRadii[i + 4] = bottomRadius;
++        }
++        mFocusPath.reset();
++        mFocusPath.addRoundRect(mFocusRect, mFocusRadii, Path.Direction.CW);
++        canvas.drawPath(mFocusPath, mFocusFillPaint);
++        canvas.drawPath(mFocusPath, mFocusStrokePaint);
+     }
+ 
+     @Override
+diff --git a/src/com/android/settings/widget/NavigationSound.java b/src/com/android/settings/widget/NavigationSound.java
+new file mode 100644
+index 0000000..124bced
+--- /dev/null
++++ b/src/com/android/settings/widget/NavigationSound.java
+@@ -0,0 +1,54 @@
++/*
++ * SPDX-FileCopyrightText: 2026 RavenOS
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package com.android.settings.widget;
++
++import android.view.KeyEvent;
++import android.view.SoundEffectConstants;
++import android.view.View;
++import android.view.Window;
++
++/**
++ * Plays the navigation tick when a remote's arrow key moves focus inside a view that handles
++ * the key itself, such as a scroll view. The framework only plays it when it moves focus on
++ * its own, so without this those moves are silent.
++ */
++public final class NavigationSound {
++
++    private NavigationSound() {
++    }
++
++    /**
++     * Call from Activity.dispatchKeyEvent with the focus from before the key was dispatched
++     * and whether the window handled it.
++     */
++    public static void afterKey(Window window, KeyEvent event, View focusBefore,
++            boolean handled) {
++        if (!handled || event.getAction() != KeyEvent.ACTION_DOWN) {
++            return;
++        }
++        final int direction;
++        switch (event.getKeyCode()) {
++            case KeyEvent.KEYCODE_DPAD_UP:
++                direction = View.FOCUS_UP;
++                break;
++            case KeyEvent.KEYCODE_DPAD_DOWN:
++                direction = View.FOCUS_DOWN;
++                break;
++            case KeyEvent.KEYCODE_DPAD_LEFT:
++                direction = View.FOCUS_LEFT;
++                break;
++            case KeyEvent.KEYCODE_DPAD_RIGHT:
++                direction = View.FOCUS_RIGHT;
++                break;
++            default:
++                return;
++        }
++        final View focus = window.getCurrentFocus();
++        if (focus != null && focus != focusBefore) {
++            focus.playSoundEffect(SoundEffectConstants.getContantForFocusDirection(direction));
++        }
++    }
++}
+-- 
+2.53.0
+

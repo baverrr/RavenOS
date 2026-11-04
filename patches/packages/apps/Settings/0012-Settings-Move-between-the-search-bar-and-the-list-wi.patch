@@ -1,0 +1,96 @@
+From 548d3d2913141cd9c43d71cf51cbdd6e8bd35185 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 12:14:38 -0700
+Subject: [PATCH] Settings: Move between the search bar and the list with a
+ remote
+
+The homepage search bar sits outside the scrolling list, so a remote's
+up from the first row never reached it and down from it never came
+back. Handle both moves explicitly, and outline the search bar in the
+accent while it has focus.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I31d05f82da09579240a6928c988d925a575dc3f4
+---
+ .../homepage/SettingsHomepageActivity.java    | 50 ++++++++++++++++++-
+ 1 file changed, 49 insertions(+), 1 deletion(-)
+
+diff --git a/src/com/android/settings/homepage/SettingsHomepageActivity.java b/src/com/android/settings/homepage/SettingsHomepageActivity.java
+index 1d61275..42a8ffb 100644
+--- a/src/com/android/settings/homepage/SettingsHomepageActivity.java
++++ b/src/com/android/settings/homepage/SettingsHomepageActivity.java
+@@ -30,6 +30,8 @@ import android.widget.Toolbar;
+ 
+ import androidx.annotation.VisibleForTesting;
+ import androidx.core.widget.NestedScrollView;
++
++import com.google.android.material.card.MaterialCardView;
+ import androidx.fragment.app.Fragment;
+ import androidx.fragment.app.FragmentActivity;
+ import androidx.fragment.app.FragmentManager;
+@@ -85,6 +87,15 @@ public class SettingsHomepageActivity extends FragmentActivity {
+         final NestedScrollView scroller = findViewById(R.id.main_content_scrollable_container);
+         scroller.setOnScrollChangeListener((NestedScrollView.OnScrollChangeListener)
+                 (v, x, y, oldX, oldY) -> followScroll(appBar, y));
++        // RavenOS: outline the search pill in the accent while a remote has it focused.
++        final MaterialCardView searchCard = findViewById(R.id.search_bar);
++        final int cardStroke = searchCard.getStrokeColor();
++        final int cardStrokeWidth = searchCard.getStrokeWidth();
++        final int focusStrokeWidth = Math.round(2 * getResources().getDisplayMetrics().density);
++        findViewById(R.id.search_action_bar).setOnFocusChangeListener((v, hasFocus) -> {
++            searchCard.setStrokeColor(hasFocus ? getColor(R.color.raven_accent) : cardStroke);
++            searchCard.setStrokeWidth(hasFocus ? focusStrokeWidth : cardStrokeWidth);
++        });
+ 
+         final Toolbar toolbar = findViewById(R.id.search_action_bar);
+         FeatureFactory.getFactory(this).getSearchFeatureProvider()
+@@ -174,8 +185,45 @@ public class SettingsHomepageActivity extends FragmentActivity {
+     @Override
+     public boolean dispatchKeyEvent(KeyEvent event) {
+         final View focusBefore = getCurrentFocus();
+-        final boolean handled = super.dispatchKeyEvent(event);
++        final boolean handled = moveBetweenSearchAndList(event, focusBefore)
++                || super.dispatchKeyEvent(event);
+         NavigationSound.afterKey(getWindow(), event, focusBefore, handled);
+         return handled;
+     }
++
++    /**
++     * The search bar sits outside the scrolling list, so a remote's up/down never crosses
++     * between them. Up from the first row goes to the search bar, and down from the search
++     * bar goes back to the first row.
++     */
++    private boolean moveBetweenSearchAndList(KeyEvent event, View focus) {
++        if (event.getAction() != KeyEvent.ACTION_DOWN || focus == null) {
++            return false;
++        }
++        final View search = findViewById(R.id.search_action_bar);
++        final View container = findViewById(R.id.homepage_container);
++        final NestedScrollView scroller = findViewById(R.id.main_content_scrollable_container);
++        if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_UP && focus != container
++                && isInside(focus, container) && !isInside(focus.focusSearch(View.FOCUS_UP),
++                        container)) {
++            scroller.scrollTo(0, 0);
++            return search.requestFocus();
++        }
++        if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN && focus == search) {
++            scroller.scrollTo(0, 0);
++            final View row = firstVisibleFocusable(container);
++            return row != null && row.requestFocus();
++        }
++        return false;
++    }
++
++    private static boolean isInside(View view, View ancestor) {
++        for (View v = view; v != null; v = v.getParent() instanceof View
++                ? (View) v.getParent() : null) {
++            if (v == ancestor) {
++                return true;
++            }
++        }
++        return false;
++    }
+ }
+-- 
+2.53.0
+

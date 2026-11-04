@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Home screen notice (for example "Pair now"): a solid card in the glass theme, readable
+     over any photo or video. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/settings_surface" />
+    <stroke android:width="1dp" android:color="@color/settings_card_stroke" />
+    <corners android:radius="@dimen/settings_card_radius" />
+</shape>

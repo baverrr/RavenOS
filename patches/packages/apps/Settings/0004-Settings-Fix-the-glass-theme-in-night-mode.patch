@@ -1,0 +1,122 @@
+From c071790a4c19e11179bb7d95f5712acf384404e0 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 19:26:59 -0700
+Subject: [PATCH] Settings: Fix the glass theme in night mode
+
+- Remove the night-mode Widget.ActionBar.Base, which drew a solid bar
+  behind the toolbar on every sub-page.
+- Color the switch bar label and toggle from the glass theme instead of
+  the colors meant for a solid accent bar, which were black at night.
+- Don't let the system draw a scrim behind the navigation bar.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I47d2287aa099f8b8b62160cf06898e3cf9581419
+---
+ res/color/raven_switch_thumb.xml | 10 ++++++++++
+ res/color/raven_switch_track.xml | 10 ++++++++++
+ res/values-night/styles.xml      | 24 ------------------------
+ res/values/themes.xml            |  8 ++++++--
+ 4 files changed, 26 insertions(+), 26 deletions(-)
+ create mode 100644 res/color/raven_switch_thumb.xml
+ create mode 100644 res/color/raven_switch_track.xml
+ delete mode 100644 res/values-night/styles.xml
+
+diff --git a/res/color/raven_switch_thumb.xml b/res/color/raven_switch_thumb.xml
+new file mode 100644
+index 0000000..6cb521b
+--- /dev/null
++++ b/res/color/raven_switch_thumb.xml
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Switch-bar toggle thumb on the glass card. -->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:state_checked="true" android:color="@color/raven_accent" />
++    <item android:color="@color/raven_fg_2" />
++</selector>
+diff --git a/res/color/raven_switch_track.xml b/res/color/raven_switch_track.xml
+new file mode 100644
+index 0000000..83e4108
+--- /dev/null
++++ b/res/color/raven_switch_track.xml
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Switch-bar toggle track on the glass card. -->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:state_checked="true" android:alpha="0.5" android:color="@color/raven_accent" />
++    <item android:alpha="0.4" android:color="@color/raven_fg_3" />
++</selector>
+diff --git a/res/values-night/styles.xml b/res/values-night/styles.xml
+deleted file mode 100644
+index 87159b8..0000000
+--- a/res/values-night/styles.xml
++++ /dev/null
+@@ -1,24 +0,0 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<!--
+-     Copyright (C) 2018 The Android Open Source Project
+-
+-     Licensed under the Apache License, Version 2.0 (the "License");
+-     you may not use this file except in compliance with the License.
+-     You may obtain a copy of the License at
+-
+-          http://www.apache.org/licenses/LICENSE-2.0
+-
+-     Unless required by applicable law or agreed to in writing, software
+-     distributed under the License is distributed on an "AS IS" BASIS,
+-     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-     See the License for the specific language governing permissions and
+-     limitations under the License.
+--->
+-
+-<resources>
+-
+-<style name="Widget.ActionBar.Base" parent="@android:style/Widget.DeviceDefault.ActionBar.Solid">
+-  <item name="android:background">?android:attr/colorPrimaryDark</item>
+-</style>
+-
+-</resources>
+\ No newline at end of file
+diff --git a/res/values/themes.xml b/res/values/themes.xml
+index bcde1af..2b62437 100644
+--- a/res/values/themes.xml
++++ b/res/values/themes.xml
+@@ -41,6 +41,8 @@
+         <item name="android:statusBarColor">@android:color/transparent</item>
+         <item name="android:navigationBarColor">@android:color/transparent</item>
+         <item name="android:navigationBarDividerColor">@android:color/transparent</item>
++        <!-- No system scrim behind the navigation buttons; the backdrop runs to the edge. -->
++        <item name="android:enforceNavigationBarContrast">false</item>
+         <item name="android:windowLightStatusBar">@bool/raven_light_ui</item>
+         <item name="android:windowLightNavigationBar">@bool/raven_light_ui</item>
+         <item name="android:actionBarTheme">@style/ThemeOverlay.Raven.ActionBar</item>
+@@ -122,6 +124,8 @@
+     <style name="ThemeOverlay.SwitchBar.Settings.Base" parent="@*android:style/ThemeOverlay.DeviceDefault.ActionBar">
+         <item name="android:elevation">0dp</item>
+         <item name="android:textColorPrimary">@color/raven_text_primary</item>
++        <!-- The switch label uses the inverse color, made for a solid accent bar. -->
++        <item name="android:textColorPrimaryInverse">@color/raven_text_primary</item>
+         <item name="switchBarMarginStart">@dimen/switchbar_subsettings_margin_start</item>
+         <item name="switchBarMarginEnd">@dimen/switchbar_subsettings_margin_end</item>
+         <item name="switchBarBackgroundColor">@color/raven_glass</item>
+@@ -132,8 +136,8 @@
+     <style name="ThemeOverlay.SwitchBar.Settings" parent="ThemeOverlay.SwitchBar.Settings.Base"/>
+ 
+     <style name="Widget.SwitchBar.Switch" parent="@android:style/Widget.Material.CompoundButton.Switch">
+-        <item name="android:trackTint">@color/switchbar_switch_track_tint</item>
+-        <item name="android:thumbTint">@color/switchbar_switch_thumb_tint</item>
++        <item name="android:trackTint">@color/raven_switch_track</item>
++        <item name="android:thumbTint">@color/raven_switch_thumb</item>
+         <item name="android:minHeight">@dimen/min_tap_target_size</item>
+         <item name="android:minWidth">@dimen/min_tap_target_size</item>
+     </style>
+-- 
+2.53.0
+

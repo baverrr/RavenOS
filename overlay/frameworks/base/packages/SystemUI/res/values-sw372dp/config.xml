@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Back and Home only: no Recents button. An empty space stands in for it so Home
+         stays in the middle. -->
+    <string name="config_navBarLayout" translatable="false">left[.25W],back[.5WC];home;space[.5WC],right[.25W]</string>
+</resources>

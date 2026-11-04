@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- RavenOS palette. Everything except the night colors follows the glass theme
+     (settings_glass.xml, overlaid per theme variant), so the home screen, alarms and the
+     RavenOS settings page match Android Settings. -->
+<resources>
+    <color name="raven_bg">@color/settings_bg</color>
+    <color name="raven_surface">@color/settings_surface</color>
+    <color name="raven_glass">@color/settings_home_glass</color>
+    <color name="raven_glass_stroke">@color/settings_card_stroke</color>
+    <color name="raven_scrim">#8C000000</color>
+    <color name="raven_text">@color/settings_fg</color>
+    <color name="raven_text_dim">@color/settings_fg_2</color>
+    <color name="raven_text_muted">@color/settings_fg_3</color>
+    <color name="raven_accent">@color/settings_accent</color>
+    <color name="raven_on_accent">@color/settings_on_accent</color>
+    <!-- Night stays a dim warm amber, gentle in a dark bedroom. -->
+    <color name="raven_night">#FFB45309</color>
+    <color name="raven_divider">@color/settings_separator</color>
+    <color name="raven_danger">#FFEF4444</color>
+    <!-- A value to keep an eye on (Device health meters at 75 %). -->
+    <color name="raven_warn">#FFF59E0B</color>
+    <color name="raven_shadow">#CC000000</color>
+    <!-- Outline of the view the remote's D-pad is on. -->
+    <color name="raven_focus">@color/settings_fg</color>
+</resources>

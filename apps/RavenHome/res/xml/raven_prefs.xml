@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <PreferenceCategory android:title="@string/pref_cat_background">
+        <ListPreference
+            android:key="background"
+            android:title="@string/pref_background"
+            android:defaultValue="auto"
+            android:entries="@array/background_entries"
+            android:entryValues="@array/background_values"
+            android:summary="%s" />
+        <Preference
+            android:key="video_folder"
+            android:title="@string/pref_video_folder"
+            android:summary="@string/pref_video_folder_summary"
+            android:selectable="false" />
+        <Preference
+            android:key="photo_folder"
+            android:title="@string/pref_photo_folder"
+            android:summary="@string/pref_photo_folder_summary"
+            android:selectable="false" />
+        <ListPreference
+            android:key="photo_interval_seconds"
+            android:title="@string/pref_photo_interval"
+            android:defaultValue="15"
+            android:entries="@array/photo_interval_entries"
+            android:entryValues="@array/photo_interval_values"
+            android:summary="%s" />
+        <ListPreference
+            android:key="reveal_seconds"
+            android:title="@string/pref_reveal_seconds"
+            android:defaultValue="15"
+            android:entries="@array/reveal_entries"
+            android:entryValues="@array/reveal_values"
+            android:summary="%s" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/pref_cat_weather">
+        <EditTextPreference
+            android:key="weather_query"
+            android:title="@string/pref_weather_place"
+            android:dialogTitle="@string/pref_weather_place_hint"
+            android:singleLine="true" />
+        <ListPreference
+            android:key="temp_unit"
+            android:title="@string/pref_temp_unit"
+            android:defaultValue="celsius"
+            android:entries="@array/temp_unit_entries"
+            android:entryValues="@array/temp_unit_values"
+            android:summary="%s" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/pref_cat_night">
+        <SwitchPreference
+            android:key="night_enabled"
+            android:title="@string/pref_night"
+            android:summary="@string/pref_night_summary"
+            android:defaultValue="true" />
+        <ListPreference
+            android:key="night_start"
+            android:title="@string/pref_night_start"
+            android:dependency="night_enabled"
+            android:defaultValue="22"
+            android:entries="@array/hour_entries"
+            android:entryValues="@array/hour_values"
+            android:summary="%s" />
+        <ListPreference
+            android:key="night_end"
+            android:title="@string/pref_night_end"
+            android:dependency="night_enabled"
+            android:defaultValue="7"
+            android:entries="@array/hour_entries"
+            android:entryValues="@array/hour_values"
+            android:summary="%s" />
+        <ListPreference
+            android:key="night_level"
+            android:title="@string/pref_night_level"
+            android:dependency="night_enabled"
+            android:defaultValue="5"
+            android:entries="@array/night_level_entries"
+            android:entryValues="@array/night_level_values"
+            android:summary="%s" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/pref_cat_about">
+        <Preference
+            android:key="device_health"
+            android:title="@string/health_title"
+            android:summary="@string/health_tile_summary">
+            <intent
+                android:targetPackage="org.ravenos.home"
+                android:targetClass="org.ravenos.home.HealthActivity" />
+        </Preference>
+        <Preference
+            android:key="font_license"
+            android:title="@string/pref_font_license"
+            android:summary="@string/pref_font_license_summary" />
+    </PreferenceCategory>
+</PreferenceScreen>

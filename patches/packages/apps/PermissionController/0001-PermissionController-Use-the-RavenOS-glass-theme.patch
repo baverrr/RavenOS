@@ -1,0 +1,556 @@
+From 00858f11f4ec049af394a235a5222e525307e0a2 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 20:19:58 -0700
+Subject: [PATCH] PermissionController: Use the RavenOS glass theme
+
+Draw the Settings-style pages (Permission manager, each permission's
+app list, an app's permissions and All permissions, the per-app
+permission choices, Default apps and their pickers, Special app access)
+like the RavenOS glass Settings:
+
+- The Settings theme uses raven_backdrop as the window background, with
+  transparent status, navigation and action bars, and reads every color
+  from res/values/raven_glass.xml so a product overlay can recolor it.
+- Add GlassGroupDecoration (ported from RavenOS Settings), which draws
+  each preference group as one rounded glass card with inset separators
+  in a centred column. PermissionsFrameFragment and the role
+  SettingsFragment attach it, which covers every handheld page.
+- Put the per-app permission choices in a glass card in the same centred
+  column, and drop the rule under the app header.
+- Keep dialogs on a solid surface, since Android 11 has no backdrop blur.
+
+The runtime permission grant dialog is unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I65ed5cda01daadde893a879e4e433836b9aca589
+---
+ res/color/raven_text_primary.xml              |   9 +
+ res/color/raven_text_secondary.xml            |   9 +
+ res/drawable/raven_backdrop.xml               |  33 +++
+ res/drawable/raven_glass_card.xml             |  12 ++
+ res/values/raven_glass.xml                    |  44 ++++
+ res/values/styles.xml                         |  13 +-
+ res/values/themes.xml                         |  48 ++++-
+ .../ui/handheld/AppPermissionFragment.java    |  10 +
+ .../ui/handheld/GlassGroupDecoration.java     | 195 ++++++++++++++++++
+ .../ui/handheld/PermissionsFrameFragment.java |   3 +
+ .../role/ui/handheld/SettingsFragment.java    |   5 +
+ 11 files changed, 376 insertions(+), 5 deletions(-)
+ create mode 100644 res/color/raven_text_primary.xml
+ create mode 100644 res/color/raven_text_secondary.xml
+ create mode 100644 res/drawable/raven_backdrop.xml
+ create mode 100644 res/drawable/raven_glass_card.xml
+ create mode 100644 res/values/raven_glass.xml
+ create mode 100644 src/com/android/permissioncontroller/permission/ui/handheld/GlassGroupDecoration.java
+
+diff --git a/res/color/raven_text_primary.xml b/res/color/raven_text_primary.xml
+new file mode 100644
+index 0000000..cf7b5a5
+--- /dev/null
++++ b/res/color/raven_text_primary.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:state_enabled="false" android:alpha="0.4" android:color="@color/raven_fg" />
++    <item android:color="@color/raven_fg" />
++</selector>
+diff --git a/res/color/raven_text_secondary.xml b/res/color/raven_text_secondary.xml
+new file mode 100644
+index 0000000..b82014d
+--- /dev/null
++++ b/res/color/raven_text_secondary.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:state_enabled="false" android:alpha="0.4" android:color="@color/raven_fg_2" />
++    <item android:color="@color/raven_fg_2" />
++</selector>
+diff --git a/res/drawable/raven_backdrop.xml b/res/drawable/raven_backdrop.xml
+new file mode 100644
+index 0000000..32b6c94
+--- /dev/null
++++ b/res/drawable/raven_backdrop.xml
+@@ -0,0 +1,33 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Window backdrop behind the permission and default app pages, as in Settings. Android 11
++     has no backdrop blur, so the softness of the "glass" comes from these wide glows. -->
++<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
++    <item>
++        <color android:color="@color/raven_bg" />
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.15" android:centerY="0.9"
++                android:gradientRadius="80%p"
++                android:startColor="@color/raven_glow_1" android:endColor="#00000000" />
++        </shape>
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.8" android:centerY="0.15"
++                android:gradientRadius="75%p"
++                android:startColor="@color/raven_glow_2" android:endColor="#00000000" />
++        </shape>
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.55" android:centerY="0.55"
++                android:gradientRadius="55%p"
++                android:startColor="@color/raven_glow_3" android:endColor="#00000000" />
++        </shape>
++    </item>
++</layer-list>
+diff --git a/res/drawable/raven_glass_card.xml b/res/drawable/raven_glass_card.xml
+new file mode 100644
+index 0000000..a344912
+--- /dev/null
++++ b/res/drawable/raven_glass_card.xml
+@@ -0,0 +1,12 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- A standalone glass card, for content that isn't a preference list (the per-app
++     permission choices). Matches the cards GlassGroupDecoration draws. -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android">
++    <corners android:radius="@dimen/raven_card_radius" />
++    <solid android:color="@color/raven_glass" />
++    <stroke android:width="1dp" android:color="@color/raven_glass_stroke" />
++</shape>
+diff --git a/res/values/raven_glass.xml b/res/values/raven_glass.xml
+new file mode 100644
+index 0000000..debdbb9
+--- /dev/null
++++ b/res/values/raven_glass.xml
+@@ -0,0 +1,44 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- RavenOS glass theme tokens. These are the Midnight Aurora values; the product picks a
++     variant by overlaying this file from vendor/ravenos/themes/<variant>/ (see THEME.md). -->
++<resources>
++    <!-- Backdrop: base fill and three soft glows. -->
++    <color name="raven_bg">#FF070B1D</color>
++    <color name="raven_glow_1">#CC0D9488</color>
++    <color name="raven_glow_2">#AA7C3AED</color>
++    <color name="raven_glow_3">#881E3A8A</color>
++
++    <!-- Text. -->
++    <color name="raven_fg">#FFF0F9FF</color>
++    <color name="raven_fg_2">#FFBAE6FD</color>
++    <color name="raven_fg_3">#FF7FA3C4</color>
++
++    <!-- Glass cards. -->
++    <color name="raven_glass">#12FFFFFF</color>
++    <color name="raven_glass_stroke">#29BAE6FD</color>
++    <color name="raven_separator">#1ABAE6FD</color>
++    <color name="raven_ripple">#1FFFFFFF</color>
++
++    <!-- Accent, and the switch bar when it is on. -->
++    <color name="raven_accent">#FF22D3EE</color>
++    <color name="raven_on_accent">#FF04212A</color>
++    <color name="raven_switchbar_on">#2922D3EE</color>
++    <color name="raven_switchbar_on_stroke">#7322D3EE</color>
++    <color name="raven_tab_selected">#29FFFFFF</color>
++
++    <!-- Solid surface for dialogs: no live blur on Android 11, so these stay opaque. -->
++    <color name="raven_surface">#FF141B33</color>
++
++    <!-- True for light variants: dark status bar icons and dark text. -->
++    <bool name="raven_light_ui">false</bool>
++
++    <dimen name="raven_card_radius">20dp</dimen>
++    <dimen name="raven_dialog_radius">24dp</dimen>
++    <dimen name="raven_content_max_width">760dp</dimen>
++    <dimen name="raven_content_min_side">24dp</dimen>
++    <dimen name="raven_group_gap">16dp</dimen>
++</resources>
+diff --git a/res/values/styles.xml b/res/values/styles.xml
+index c1c8e2d..c8a03f4 100644
+--- a/res/values/styles.xml
++++ b/res/values/styles.xml
+@@ -276,12 +276,14 @@
+         <item name="android:layout_height">wrap_content</item>
+     </style>
+ 
++    <!-- RavenOS: no rule under the app header; the glass card below separates it. -->
+     <style name="LargeHeaderDivider">
+         <item name="android:layout_width">match_parent</item>
+         <item name="android:layout_height">.75dp</item>
+-        <item name="android:background">?android:attr/dividerHorizontal</item>
++        <item name="android:background">@android:color/transparent</item>
+     </style>
+ 
++    <!-- RavenOS: the permission choices sit in one glass card, like a preference group. -->
+     <style name="AppPermissionSelection">
+         <item name="android:layout_width">match_parent</item>
+         <item name="android:layout_height">wrap_content</item>
+@@ -289,7 +291,10 @@
+         <item name="android:minHeight">?android:attr/listPreferredItemHeight</item>
+         <item name="android:paddingStart">?android:attr/listPreferredItemPaddingStart</item>
+         <item name="android:paddingEnd">?android:attr/listPreferredItemPaddingEnd</item>
+-        <item name="android:background">?android:attr/selectableItemBackground</item>
++        <item name="android:paddingBottom">16dp</item>
++        <item name="android:layout_marginTop">8dp</item>
++        <item name="android:layout_marginBottom">@dimen/raven_group_gap</item>
++        <item name="android:background">@drawable/raven_glass_card</item>
+     </style>
+ 
+     <style name="AppPermissionMessage"
+@@ -298,7 +303,7 @@
+         <item name="android:layout_height">wrap_content</item>
+         <item name="android:layout_marginTop">16dp</item>
+         <item name="android:layout_marginStart">56dp</item>
+-        <item name="android:textColor">?android:attr/colorAccent</item>
++        <item name="android:textColor">@color/raven_fg_3</item>
+         <item name="android:textDirection">locale</item>
+     </style>
+ 
+@@ -349,7 +354,7 @@
+         <item name="android:layout_height">.75dp</item>
+         <item name="android:layout_marginTop">12dp</item>
+         <item name="android:layout_marginBottom">8dp</item>
+-        <item name="android:background">?android:attr/dividerHorizontal</item>
++        <item name="android:background">@color/raven_separator</item>
+     </style>
+ 
+     <style name="AppPermissionFooterText">
+diff --git a/res/values/themes.xml b/res/values/themes.xml
+index 2a70fde..a16b682 100644
+--- a/res/values/themes.xml
++++ b/res/values/themes.xml
+@@ -17,10 +17,56 @@
+ 
+ <resources>
+ 
++    <!-- RavenOS: the permission and default app pages use the same glass look as Settings,
++         with every color from res/values/raven_glass.xml. -->
+     <style name="Settings"
+            parent="@android:style/Theme.DeviceDefault.Settings">
+-        <item name="preferenceTheme">@style/PreferenceThemeOverlay</item>
++        <item name="preferenceTheme">@style/PreferenceThemeOverlay.Raven</item>
+         <item name="preferenceCategoryTitleTextAppearance">@style/TextAppearance.CategoryTitle</item>
++        <item name="android:windowBackground">@drawable/raven_backdrop</item>
++        <item name="android:colorBackground">@color/raven_bg</item>
++        <item name="android:colorBackgroundCacheHint">@null</item>
++        <item name="android:colorPrimary">@color/raven_bg</item>
++        <item name="android:colorPrimaryDark">@color/raven_bg</item>
++        <item name="android:colorAccent">@color/raven_accent</item>
++        <item name="android:colorControlHighlight">@color/raven_ripple</item>
++        <item name="android:textColorPrimary">@color/raven_text_primary</item>
++        <item name="android:textColorSecondary">@color/raven_text_secondary</item>
++        <item name="android:textColorTertiary">@color/raven_fg_3</item>
++        <item name="android:statusBarColor">@android:color/transparent</item>
++        <item name="android:navigationBarColor">@android:color/transparent</item>
++        <item name="android:navigationBarDividerColor">@android:color/transparent</item>
++        <item name="android:windowLightStatusBar">@bool/raven_light_ui</item>
++        <item name="android:windowLightNavigationBar">@bool/raven_light_ui</item>
++        <item name="android:actionBarStyle">@style/Widget.Raven.ActionBar</item>
++        <item name="android:actionBarTheme">@style/ThemeOverlay.Raven.ActionBar</item>
++        <item name="android:alertDialogTheme">@style/Theme.Raven.AlertDialog</item>
++        <item name="android:dialogCornerRadius">@dimen/raven_dialog_radius</item>
++    </style>
++
++    <style name="PreferenceThemeOverlay.Raven" parent="@style/PreferenceThemeOverlay">
++        <item name="preferenceCategoryTitleTextColor">@color/raven_fg_3</item>
++    </style>
++
++    <!-- No bar fill or shadow, so the glass backdrop runs up under the title. -->
++    <style name="Widget.Raven.ActionBar" parent="@android:style/Widget.DeviceDefault.ActionBar.Solid">
++        <item name="android:background">@android:color/transparent</item>
++        <item name="android:elevation">0dp</item>
++    </style>
++
++    <style name="ThemeOverlay.Raven.ActionBar" parent="@android:style/ThemeOverlay.Material.ActionBar">
++        <item name="android:textColorPrimary">@color/raven_text_primary</item>
++        <item name="android:textColorSecondary">@color/raven_text_secondary</item>
++        <item name="android:colorControlNormal">@color/raven_fg</item>
++    </style>
++
++    <!-- Dialogs stay on a solid surface: Android 11 can't blur behind them. -->
++    <style name="Theme.Raven.AlertDialog" parent="@android:style/Theme.DeviceDefault.Dialog.Alert">
++        <item name="android:colorAccent">@color/raven_accent</item>
++        <item name="android:colorBackground">@color/raven_surface</item>
++        <item name="android:textColorPrimary">@color/raven_text_primary</item>
++        <item name="android:textColorSecondary">@color/raven_text_secondary</item>
++        <item name="android:dialogCornerRadius">@dimen/raven_dialog_radius</item>
+     </style>
+ 
+     <style name="TextAppearance.CategoryTitle"
+diff --git a/src/com/android/permissioncontroller/permission/ui/handheld/AppPermissionFragment.java b/src/com/android/permissioncontroller/permission/ui/handheld/AppPermissionFragment.java
+index 6a7002d..fdfd8f1 100644
+--- a/src/com/android/permissioncontroller/permission/ui/handheld/AppPermissionFragment.java
++++ b/src/com/android/permissioncontroller/permission/ui/handheld/AppPermissionFragment.java
+@@ -210,6 +210,16 @@ public class AppPermissionFragment extends SettingsWithLargeHeader
+         Context context = getContext();
+         ViewGroup root = (ViewGroup) inflater.inflate(R.layout.app_permission, container, false);
+ 
++        // RavenOS: keep the page in the same centred column as the glass cards elsewhere.
++        View content = ((ViewGroup) root.requireViewById(R.id.nested_scroll_view)).getChildAt(0);
++        root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
++            int side = GlassGroupDecoration.getSideInset(v.getContext(), r - l);
++            if (content.getPaddingStart() != side) {
++                v.post(() -> content.setPaddingRelative(side, content.getPaddingTop(), side,
++                        content.getPaddingBottom()));
++            }
++        });
++
+         mIsInitialLoad = true;
+ 
+         setHeader(mPackageIcon, mPackageLabel, null, null, false);
+diff --git a/src/com/android/permissioncontroller/permission/ui/handheld/GlassGroupDecoration.java b/src/com/android/permissioncontroller/permission/ui/handheld/GlassGroupDecoration.java
+new file mode 100644
+index 0000000..1fce26c
+--- /dev/null
++++ b/src/com/android/permissioncontroller/permission/ui/handheld/GlassGroupDecoration.java
+@@ -0,0 +1,195 @@
++/*
++ * SPDX-FileCopyrightText: 2026 RavenOS
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package com.android.permissioncontroller.permission.ui.handheld;
++
++import android.content.Context;
++import android.content.res.Resources;
++import android.graphics.Canvas;
++import android.graphics.Paint;
++import android.graphics.Rect;
++import android.graphics.RectF;
++import android.view.View;
++
++import androidx.preference.Preference;
++import androidx.preference.PreferenceCategory;
++import androidx.preference.PreferenceGroupAdapter;
++import androidx.recyclerview.widget.RecyclerView;
++
++import com.android.permissioncontroller.R;
++
++import java.util.Collections;
++import java.util.Set;
++
++/**
++ * Draws each run of preferences between category headers as one rounded glass card, with
++ * hairline separators inset to the title, and keeps the list in a centred column on wide
++ * screens. Category titles (including the large app header) and footers sit outside the
++ * cards. Ported from GlassGroupDecoration in RavenOS Settings, so these pages match it.
++ */
++public class GlassGroupDecoration extends RecyclerView.ItemDecoration {
++
++    private final Set<String> mGroupStartKeys;
++    private final Paint mFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
++    private final Paint mStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
++    private final Paint mSeparatorPaint = new Paint();
++    private final float mRadius;
++    private final float mStrokeWidth;
++    private final int mGroupGap;
++    private final RectF mRun = new RectF();
++
++    public GlassGroupDecoration(Context context) {
++        this(context, Collections.emptySet());
++    }
++
++    /**
++     * @param groupStartKeys keys of preferences that start a new card even without a category
++     *                       above them, for screens such as the homepage that have no categories
++     */
++    public GlassGroupDecoration(Context context, Set<String> groupStartKeys) {
++        final Resources res = context.getResources();
++        mGroupStartKeys = groupStartKeys;
++        mRadius = res.getDimension(R.dimen.raven_card_radius);
++        mStrokeWidth = res.getDisplayMetrics().density;
++        mGroupGap = res.getDimensionPixelSize(R.dimen.raven_group_gap);
++        mFillPaint.setColor(context.getColor(R.color.raven_glass));
++        mStrokePaint.setColor(context.getColor(R.color.raven_glass_stroke));
++        mStrokePaint.setStyle(Paint.Style.STROKE);
++        mStrokePaint.setStrokeWidth(mStrokeWidth);
++        mSeparatorPaint.setColor(context.getColor(R.color.raven_separator));
++    }
++
++    /** Adds the decoration to {@code list} and keeps its column width in step with the list. */
++    public void attachTo(RecyclerView list) {
++        list.addItemDecoration(this);
++        list.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
++            if (r - l != or - ol) {
++                list.invalidateItemDecorations();
++            }
++        });
++    }
++
++    /** Side margin that centres content in a column no wider than raven_content_max_width. */
++    public static int getSideInset(Context context, int width) {
++        final Resources res = context.getResources();
++        final int maxWidth = res.getDimensionPixelSize(R.dimen.raven_content_max_width);
++        final int minSide = res.getDimensionPixelSize(R.dimen.raven_content_min_side);
++        return Math.max(minSide, (width - maxWidth) / 2);
++    }
++
++    @Override
++    public void getItemOffsets(Rect outRect, View view, RecyclerView parent,
++            RecyclerView.State state) {
++        final int position = parent.getChildAdapterPosition(view);
++        final Preference preference = getItem(parent, position);
++        if (preference == null) {
++            return;
++        }
++        final int side = getSideInset(parent.getContext(), parent.getWidth());
++        outRect.left = side;
++        outRect.right = side;
++        if (isCard(preference) && endsGroup(parent, position)) {
++            outRect.bottom = mGroupGap;
++        }
++    }
++
++    @Override
++    public void onDraw(Canvas canvas, RecyclerView parent, RecyclerView.State state) {
++        boolean inRun = false;
++        final int count = parent.getChildCount();
++        for (int i = 0; i < count; i++) {
++            final View child = parent.getChildAt(i);
++            final int position = parent.getChildAdapterPosition(child);
++            final Preference preference = getItem(parent, position);
++            if (preference == null || !isCard(preference)) {
++                if (inRun) {
++                    // The rest of this group is not laid out yet; leave its bottom open.
++                    drawRun(canvas, false);
++                    inRun = false;
++                }
++                continue;
++            }
++            final float top = child.getTop() + child.getTranslationY();
++            final float bottom = child.getBottom() + child.getTranslationY();
++            final boolean first = startsGroup(parent, position);
++            if (first && inRun) {
++                drawRun(canvas, false);
++                inRun = false;
++            }
++            if (!inRun) {
++                // A group whose first rows have scrolled away keeps its top edge off-screen.
++                mRun.set(child.getLeft(), first ? top : top - 2 * mRadius,
++                        child.getRight(), bottom);
++                inRun = true;
++            } else {
++                mRun.bottom = bottom;
++                drawSeparator(canvas, child, top);
++            }
++            if (endsGroup(parent, position)) {
++                drawRun(canvas, true);
++                inRun = false;
++            }
++        }
++        if (inRun) {
++            drawRun(canvas, false);
++        }
++    }
++
++    private void drawRun(Canvas canvas, boolean closed) {
++        if (!closed) {
++            mRun.bottom += 2 * mRadius;
++        }
++        canvas.drawRoundRect(mRun, mRadius, mRadius, mFillPaint);
++        final float half = mStrokeWidth / 2;
++        canvas.drawRoundRect(mRun.left + half, mRun.top + half, mRun.right - half,
++                mRun.bottom - half, mRadius, mRadius, mStrokePaint);
++    }
++
++    private void drawSeparator(Canvas canvas, View child, float y) {
++        float start = child.getLeft();
++        final View title = child.findViewById(android.R.id.title);
++        if (title != null && title.getVisibility() == View.VISIBLE) {
++            int left = 0;
++            for (View v = title; v != child && v != null; v = (View) v.getParent()) {
++                left += v.getLeft();
++            }
++            start += left;
++        } else {
++            start += mRadius;
++        }
++        canvas.drawRect(start, y, child.getRight(), y + mStrokeWidth, mSeparatorPaint);
++    }
++
++    private boolean startsGroup(RecyclerView parent, int position) {
++        final Preference previous = getItem(parent, position - 1);
++        if (previous == null || !isCard(previous)) {
++            return true;
++        }
++        final Preference preference = getItem(parent, position);
++        return preference != null && mGroupStartKeys.contains(preference.getKey());
++    }
++
++    private boolean endsGroup(RecyclerView parent, int position) {
++        final Preference next = getItem(parent, position + 1);
++        return next == null || !isCard(next) || mGroupStartKeys.contains(next.getKey());
++    }
++
++    private static boolean isCard(Preference preference) {
++        // Footers of both the permission pages and the default app pages stay outside.
++        return !(preference instanceof PreferenceCategory)
++                && !(preference instanceof FooterPreference)
++                && !(preference instanceof
++                        com.android.permissioncontroller.role.ui.handheld.FooterPreference);
++    }
++
++    private static Preference getItem(RecyclerView parent, int position) {
++        final RecyclerView.Adapter adapter = parent.getAdapter();
++        if (!(adapter instanceof PreferenceGroupAdapter)
++                || position < 0 || position >= adapter.getItemCount()) {
++            return null;
++        }
++        return ((PreferenceGroupAdapter) adapter).getItem(position);
++    }
++}
+diff --git a/src/com/android/permissioncontroller/permission/ui/handheld/PermissionsFrameFragment.java b/src/com/android/permissioncontroller/permission/ui/handheld/PermissionsFrameFragment.java
+index ccbbd26..0c06a8d 100644
+--- a/src/com/android/permissioncontroller/permission/ui/handheld/PermissionsFrameFragment.java
++++ b/src/com/android/permissioncontroller/permission/ui/handheld/PermissionsFrameFragment.java
+@@ -82,6 +82,9 @@ public abstract class PermissionsFrameFragment extends PreferenceFragmentCompat
+         mLoadingView = rootView.findViewById(R.id.loading_container);
+         mPreferencesContainer = (ViewGroup) super.onCreateView(
+                 inflater, mPrefsView, savedInstanceState);
++        // RavenOS: preferences sit in glass cards, which draw their own separators.
++        setDivider(null);
++        new GlassGroupDecoration(requireContext()).attachTo(getListView());
+         setLoading(mIsLoading, false, true /* force */);
+         mPrefsView.addView(mPreferencesContainer, 0);
+         mProgressHeader = rootView.requireViewById(R.id.progress_bar_animation);
+diff --git a/src/com/android/permissioncontroller/role/ui/handheld/SettingsFragment.java b/src/com/android/permissioncontroller/role/ui/handheld/SettingsFragment.java
+index 60ddd4f..5ca9822 100644
+--- a/src/com/android/permissioncontroller/role/ui/handheld/SettingsFragment.java
++++ b/src/com/android/permissioncontroller/role/ui/handheld/SettingsFragment.java
+@@ -35,6 +35,7 @@ import androidx.preference.PreferenceFragmentCompat;
+ import androidx.preference.PreferenceScreen;
+ 
+ import com.android.permissioncontroller.R;
++import com.android.permissioncontroller.permission.ui.handheld.GlassGroupDecoration;
+ import com.android.permissioncontroller.permission.utils.Utils;
+ import com.android.permissioncontroller.role.utils.UiUtils;
+ import com.android.settingslib.HelpUtils;
+@@ -73,6 +74,10 @@ public abstract class SettingsFragment extends PreferenceFragmentCompat {
+ 
+         mLoadingView = mContentLayout.findViewById(R.id.loading);
+         mEmptyText = mContentLayout.findViewById(R.id.empty);
++
++        // RavenOS: preferences sit in glass cards, which draw their own separators.
++        setDivider(null);
++        new GlassGroupDecoration(requireContext()).attachTo(getListView());
+     }
+ 
+     @Override
+-- 
+2.53.0
+

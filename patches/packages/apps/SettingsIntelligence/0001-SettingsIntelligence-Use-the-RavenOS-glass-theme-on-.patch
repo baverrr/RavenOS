@@ -1,0 +1,306 @@
+From 805771e186e21ba67edbe88f7c12fb26cb331332 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 20:09:07 -0700
+Subject: [PATCH] SettingsIntelligence: Use the RavenOS glass theme on the
+ search page
+
+Match the RavenOS glass Settings theme:
+
+- Always use a dark base theme, with every color read from
+  res/values/raven_glass.xml (the same tokens as Settings) so a product
+  overlay can recolor it.
+- Draw the window on raven_backdrop with transparent system bars.
+- Turn the search bar into a glass pill and show the results in one
+  rounded glass card, centred in the same column as the Settings cards.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I0950d6a037094699fae04513f8409e6e00697046
+---
+ res/color/raven_text_primary.xml              |  9 ++++
+ res/color/raven_text_secondary.xml            |  9 ++++
+ res/drawable/raven_backdrop.xml               | 33 ++++++++++++++
+ res/drawable/raven_glass_card.xml             | 11 +++++
+ res/drawable/raven_search_outline.xml         | 10 +++++
+ res/layout/search_panel.xml                   | 20 ++++++---
+ res/values-w900dp/raven_glass.xml             |  9 ++++
+ res/values/raven_glass.xml                    | 43 +++++++++++++++++++
+ res/values/themes.xml                         | 30 ++++++++++++-
+ .../intelligence/search/SearchFragment.java   |  2 +
+ 10 files changed, 170 insertions(+), 6 deletions(-)
+ create mode 100644 res/color/raven_text_primary.xml
+ create mode 100644 res/color/raven_text_secondary.xml
+ create mode 100644 res/drawable/raven_backdrop.xml
+ create mode 100644 res/drawable/raven_glass_card.xml
+ create mode 100644 res/drawable/raven_search_outline.xml
+ create mode 100644 res/values-w900dp/raven_glass.xml
+ create mode 100644 res/values/raven_glass.xml
+
+diff --git a/res/color/raven_text_primary.xml b/res/color/raven_text_primary.xml
+new file mode 100644
+index 0000000..cf7b5a5
+--- /dev/null
++++ b/res/color/raven_text_primary.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:state_enabled="false" android:alpha="0.4" android:color="@color/raven_fg" />
++    <item android:color="@color/raven_fg" />
++</selector>
+diff --git a/res/color/raven_text_secondary.xml b/res/color/raven_text_secondary.xml
+new file mode 100644
+index 0000000..b82014d
+--- /dev/null
++++ b/res/color/raven_text_secondary.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:state_enabled="false" android:alpha="0.4" android:color="@color/raven_fg_2" />
++    <item android:color="@color/raven_fg_2" />
++</selector>
+diff --git a/res/drawable/raven_backdrop.xml b/res/drawable/raven_backdrop.xml
+new file mode 100644
+index 0000000..25b0440
+--- /dev/null
++++ b/res/drawable/raven_backdrop.xml
+@@ -0,0 +1,33 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Window backdrop behind every Settings page. Android 11 has no backdrop blur, so the
++     softness of the "glass" comes from these wide, already-blurred glows. -->
++<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
++    <item>
++        <color android:color="@color/raven_bg" />
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.15" android:centerY="0.9"
++                android:gradientRadius="80%p"
++                android:startColor="@color/raven_glow_1" android:endColor="#00000000" />
++        </shape>
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.8" android:centerY="0.15"
++                android:gradientRadius="75%p"
++                android:startColor="@color/raven_glow_2" android:endColor="#00000000" />
++        </shape>
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.55" android:centerY="0.55"
++                android:gradientRadius="55%p"
++                android:startColor="@color/raven_glow_3" android:endColor="#00000000" />
++        </shape>
++    </item>
++</layer-list>
+diff --git a/res/drawable/raven_glass_card.xml b/res/drawable/raven_glass_card.xml
+new file mode 100644
+index 0000000..f2859c3
+--- /dev/null
++++ b/res/drawable/raven_glass_card.xml
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Glass card behind the search results. -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android">
++    <solid android:color="@color/raven_glass" />
++    <stroke android:width="1dp" android:color="@color/raven_glass_stroke" />
++    <corners android:radius="@dimen/raven_card_radius" />
++</shape>
+diff --git a/res/drawable/raven_search_outline.xml b/res/drawable/raven_search_outline.xml
+new file mode 100644
+index 0000000..0e9ac11
+--- /dev/null
++++ b/res/drawable/raven_search_outline.xml
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Outline drawn over the glass search pill; CardView has no stroke of its own. -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android">
++    <stroke android:width="1dp" android:color="@color/raven_glass_stroke" />
++    <corners android:radius="24dp" />
++</shape>
+diff --git a/res/layout/search_panel.xml b/res/layout/search_panel.xml
+index 82b1e11..b8c8886 100644
+--- a/res/layout/search_panel.xml
++++ b/res/layout/search_panel.xml
+@@ -25,15 +25,20 @@
+         android:id="@+id/search_bar_container"
+         android:layout_width="match_parent"
+         android:layout_height="wrap_content"
+-        android:background="?android:attr/colorPrimary"
+-        android:elevation="4dp">
++        android:background="@android:color/transparent">
++        <!-- RavenOS: a glass pill in the same centred column as the Settings cards. -->
+         <androidx.cardview.widget.CardView
+             android:id="@+id/search_bar"
+             android:layout_width="match_parent"
+             android:layout_height="wrap_content"
+-            android:layout_margin="@dimen/search_bar_margin"
+-            app:cardCornerRadius="@*android:dimen/config_dialogCornerRadius"
+-            app:cardElevation="3dp">
++            android:layout_marginStart="@dimen/raven_side_margin"
++            android:layout_marginEnd="@dimen/raven_side_margin"
++            android:layout_marginTop="@dimen/search_bar_margin"
++            android:layout_marginBottom="@dimen/search_bar_margin"
++            android:foreground="@drawable/raven_search_outline"
++            app:cardBackgroundColor="@color/raven_glass"
++            app:cardCornerRadius="24dp"
++            app:cardElevation="0dp">
+             <Toolbar
+                 android:id="@+id/search_toolbar"
+                 android:layout_width="match_parent"
+@@ -61,10 +66,15 @@
+         android:orientation="vertical">
+ 
+         <!-- Padding is included in the background -->
++        <!-- RavenOS: results sit in one glass card; SearchFragment clips them to its corners. -->
+         <androidx.recyclerview.widget.RecyclerView
+             android:id="@+id/list_results"
+             android:layout_width="match_parent"
+             android:layout_height="wrap_content"
++            android:layout_marginStart="@dimen/raven_side_margin"
++            android:layout_marginEnd="@dimen/raven_side_margin"
++            android:layout_marginBottom="@dimen/search_bar_margin"
++            android:background="@drawable/raven_glass_card"
+             android:paddingStart="@dimen/dashboard_padding_start"
+             android:paddingEnd="@dimen/dashboard_padding_end"
+             android:paddingTop="@dimen/dashboard_padding_top"
+diff --git a/res/values-w900dp/raven_glass.xml b/res/values-w900dp/raven_glass.xml
+new file mode 100644
+index 0000000..c110fba
+--- /dev/null
++++ b/res/values-w900dp/raven_glass.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<resources>
++    <!-- (961dp Echo Show 8 width - 760dp column) / 2 -->
++    <dimen name="raven_side_margin">100dp</dimen>
++</resources>
+diff --git a/res/values/raven_glass.xml b/res/values/raven_glass.xml
+new file mode 100644
+index 0000000..86b4b01
+--- /dev/null
++++ b/res/values/raven_glass.xml
+@@ -0,0 +1,43 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- RavenOS glass theme tokens. These are the Midnight Aurora values; the product picks a
++     variant by overlaying this file from vendor/ravenos/themes/<variant>/ (see THEME.md). -->
++<resources>
++    <!-- Backdrop: base fill and three soft glows. -->
++    <color name="raven_bg">#FF070B1D</color>
++    <color name="raven_glow_1">#CC0D9488</color>
++    <color name="raven_glow_2">#AA7C3AED</color>
++    <color name="raven_glow_3">#881E3A8A</color>
++
++    <!-- Text. -->
++    <color name="raven_fg">#FFF0F9FF</color>
++    <color name="raven_fg_2">#FFBAE6FD</color>
++    <color name="raven_fg_3">#FF7FA3C4</color>
++
++    <!-- Glass cards. -->
++    <color name="raven_glass">#12FFFFFF</color>
++    <color name="raven_glass_stroke">#29BAE6FD</color>
++    <color name="raven_separator">#1ABAE6FD</color>
++    <color name="raven_ripple">#1FFFFFFF</color>
++
++    <!-- Accent, and the switch bar when it is on. -->
++    <color name="raven_accent">#FF22D3EE</color>
++    <color name="raven_on_accent">#FF04212A</color>
++    <color name="raven_switchbar_on">#2922D3EE</color>
++    <color name="raven_switchbar_on_stroke">#7322D3EE</color>
++    <color name="raven_tab_selected">#29FFFFFF</color>
++
++    <!-- Solid surface for dialogs: no live blur on Android 11, so these stay opaque. -->
++    <color name="raven_surface">#FF141B33</color>
++
++    <!-- True for light variants: dark status bar icons and dark text. -->
++    <bool name="raven_light_ui">false</bool>
++
++    <dimen name="raven_card_radius">20dp</dimen>
++    <!-- Side margin that centres the search bar and results in the same column as the
++         Settings cards (at most 760dp wide). values-w900dp widens it. -->
++    <dimen name="raven_side_margin">16dp</dimen>
++</resources>
+diff --git a/res/values/themes.xml b/res/values/themes.xml
+index c0453b1..9cb7dde 100644
+--- a/res/values/themes.xml
++++ b/res/values/themes.xml
+@@ -16,7 +16,35 @@
+   -->
+ 
+ <resources>
+-    <style name="Theme.Settings" parent="@android:style/Theme.DeviceDefault.Settings"/>
++    <!-- RavenOS: the search page uses the same glass look as Settings, whatever the system
++         dark theme switch says. Colors come from res/values/raven_glass.xml. -->
++    <style name="Theme.Settings" parent="@android:style/Theme.DeviceDefault">
++        <item name="android:windowBackground">@drawable/raven_backdrop</item>
++        <item name="android:colorBackground">@color/raven_bg</item>
++        <item name="android:colorBackgroundCacheHint">@null</item>
++        <item name="android:colorPrimary">@color/raven_bg</item>
++        <item name="android:colorPrimaryDark">@color/raven_bg</item>
++        <item name="android:colorAccent">@color/raven_accent</item>
++        <item name="android:colorControlNormal">@color/raven_fg</item>
++        <item name="android:colorControlHighlight">@color/raven_ripple</item>
++        <item name="android:textColorPrimary">@color/raven_text_primary</item>
++        <item name="android:textColorSecondary">@color/raven_text_secondary</item>
++        <item name="android:textColorTertiary">@color/raven_fg_3</item>
++        <item name="android:textColorHint">@color/raven_fg_3</item>
++        <item name="android:statusBarColor">@android:color/transparent</item>
++        <item name="android:navigationBarColor">@android:color/transparent</item>
++        <item name="android:enforceNavigationBarContrast">false</item>
++        <item name="android:windowLightStatusBar">@bool/raven_light_ui</item>
++        <item name="android:windowLightNavigationBar">@bool/raven_light_ui</item>
++        <item name="android:actionBarTheme">@style/ThemeOverlay.Raven.ActionBar</item>
++    </style>
++
++    <style name="ThemeOverlay.Raven.ActionBar" parent="@android:style/ThemeOverlay.Material.ActionBar">
++        <item name="android:textColorPrimary">@color/raven_text_primary</item>
++        <item name="android:textColorSecondary">@color/raven_text_secondary</item>
++        <item name="android:textColorHint">@color/raven_fg_3</item>
++        <item name="android:colorControlNormal">@color/raven_fg</item>
++    </style>
+ 
+     <style name="Theme.Settings.NoActionBar">
+         <item name="android:windowActionBar">false</item>
+diff --git a/src/com/android/settings/intelligence/search/SearchFragment.java b/src/com/android/settings/intelligence/search/SearchFragment.java
+index c76eda3..b9e7e75 100644
+--- a/src/com/android/settings/intelligence/search/SearchFragment.java
++++ b/src/com/android/settings/intelligence/search/SearchFragment.java
+@@ -146,6 +146,8 @@ public class SearchFragment extends Fragment implements SearchView.OnQueryTextLi
+         mResultsRecyclerView.setAdapter(mSearchAdapter);
+         mResultsRecyclerView.setLayoutManager(new LinearLayoutManager(activity));
+         mResultsRecyclerView.addOnScrollListener(mScrollListener);
++        // RavenOS: keep row ripples inside the rounded glass card behind the results.
++        mResultsRecyclerView.setClipToOutline(true);
+ 
+         mNoResultsView = view.findViewById(R.id.no_results_layout);
+ 
+-- 
+2.53.0
+

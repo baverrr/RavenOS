@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Features RavenOS takes away from the device's stock feature list. -->
+<permissions>
+    <!-- No printing on an Echo: the print service doesn't start, and Settings drops
+         Printing from Connected devices > Connection preferences. -->
+    <unavailable-feature name="android.software.print" />
+</permissions>

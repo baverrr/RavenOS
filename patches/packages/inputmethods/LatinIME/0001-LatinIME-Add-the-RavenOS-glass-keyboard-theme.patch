@@ -1,0 +1,691 @@
+From 5783824d02fd92f616020dda79e6d5b9279d5ba4 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 18:36:58 -0700
+Subject: [PATCH] LatinIME: Add the RavenOS glass keyboard theme
+
+Add a "RavenOS Glass" keyboard theme to match the RavenOS glass Settings
+theme, and make it the default:
+
+- Glass letter keys, darker functional keys, a pill spacebar and a solid
+  enter key, drawn with shape drawables over the LXX dark layouts and
+  icons.
+- The keyboard background is the bottom band of the Settings backdrop,
+  so the keyboard reads as part of the screen behind it.
+- Every color comes from res/values/raven_glass.xml so a product overlay
+  can recolor it.
+
+Material Light, Material Dark and Follow system stay selectable.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I4c2c5b53715518a63e0bf32aaacf8d5c2c4ae01a
+---
+ java/res/drawable/raven_key.xml               |  20 +++
+ java/res/drawable/raven_key_action.xml        |  15 ++
+ .../res/drawable/raven_key_action_pressed.xml |  15 ++
+ java/res/drawable/raven_key_functional.xml    |   9 ++
+ .../drawable/raven_key_functional_normal.xml  |  15 ++
+ java/res/drawable/raven_key_normal.xml        |  15 ++
+ java/res/drawable/raven_key_on.xml            |  15 ++
+ java/res/drawable/raven_key_popup.xml         |   9 ++
+ java/res/drawable/raven_key_popup_action.xml  |   9 ++
+ .../res/drawable/raven_key_popup_selected.xml |  14 ++
+ java/res/drawable/raven_key_pressed.xml       |  15 ++
+ java/res/drawable/raven_key_preview.xml       |  11 ++
+ .../drawable/raven_keyboard_background.xml    |  26 ++++
+ java/res/drawable/raven_popup_panel.xml       |  12 ++
+ java/res/drawable/raven_spacebar.xml          |   9 ++
+ java/res/drawable/raven_spacebar_normal.xml   |  15 ++
+ java/res/drawable/raven_spacebar_pressed.xml  |  15 ++
+ java/res/drawable/raven_suggestion.xml        |   8 ++
+ java/res/values/attrs.xml                     |   2 +
+ java/res/values/keyboard-themes.xml           |   2 +
+ java/res/values/raven_glass.xml               |  33 +++++
+ java/res/values/strings.xml                   |   2 +
+ java/res/values/themes-raven-glass.xml        | 131 ++++++++++++++++++
+ java/res/xml/key_styles_number.xml            |   2 +-
+ .../inputmethod/keyboard/KeyboardTheme.java   |   6 +-
+ 25 files changed, 423 insertions(+), 2 deletions(-)
+ create mode 100644 java/res/drawable/raven_key.xml
+ create mode 100644 java/res/drawable/raven_key_action.xml
+ create mode 100644 java/res/drawable/raven_key_action_pressed.xml
+ create mode 100644 java/res/drawable/raven_key_functional.xml
+ create mode 100644 java/res/drawable/raven_key_functional_normal.xml
+ create mode 100644 java/res/drawable/raven_key_normal.xml
+ create mode 100644 java/res/drawable/raven_key_on.xml
+ create mode 100644 java/res/drawable/raven_key_popup.xml
+ create mode 100644 java/res/drawable/raven_key_popup_action.xml
+ create mode 100644 java/res/drawable/raven_key_popup_selected.xml
+ create mode 100644 java/res/drawable/raven_key_pressed.xml
+ create mode 100644 java/res/drawable/raven_key_preview.xml
+ create mode 100644 java/res/drawable/raven_keyboard_background.xml
+ create mode 100644 java/res/drawable/raven_popup_panel.xml
+ create mode 100644 java/res/drawable/raven_spacebar.xml
+ create mode 100644 java/res/drawable/raven_spacebar_normal.xml
+ create mode 100644 java/res/drawable/raven_spacebar_pressed.xml
+ create mode 100644 java/res/drawable/raven_suggestion.xml
+ create mode 100644 java/res/values/raven_glass.xml
+ create mode 100644 java/res/values/themes-raven-glass.xml
+
+diff --git a/java/res/drawable/raven_key.xml b/java/res/drawable/raven_key.xml
+new file mode 100644
+index 0000000..8020fda
+--- /dev/null
++++ b/java/res/drawable/raven_key.xml
+@@ -0,0 +1,20 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <!-- Action keys. -->
++    <item android:state_active="true" android:state_pressed="true" android:drawable="@drawable/raven_key_action_pressed" />
++    <item android:state_active="true" android:drawable="@drawable/raven_key_action" />
++    <!-- Toggle keys. -->
++    <item android:state_checkable="true" android:state_pressed="true" android:drawable="@drawable/raven_key_pressed" />
++    <item android:state_checkable="true" android:state_checked="true" android:drawable="@drawable/raven_key_on" />
++    <item android:state_checkable="true" android:drawable="@drawable/raven_key_functional_normal" />
++    <!-- Empty background keys. -->
++    <item android:state_empty="true" android:state_pressed="true" android:drawable="@drawable/raven_key_pressed" />
++    <item android:state_empty="true" android:drawable="@android:color/transparent" />
++    <!-- Normal keys. -->
++    <item android:state_pressed="true" android:drawable="@drawable/raven_key_pressed" />
++    <item android:drawable="@drawable/raven_key_normal" />
++</selector>
+diff --git a/java/res/drawable/raven_key_action.xml b/java/res/drawable/raven_key_action.xml
+new file mode 100644
+index 0000000..35b7996
+--- /dev/null
++++ b/java/res/drawable/raven_key_action.xml
+@@ -0,0 +1,15 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:left="@dimen/raven_key_gap" android:top="@dimen/raven_key_gap"
++        android:right="@dimen/raven_key_gap" android:bottom="@dimen/raven_key_gap">
++        <shape>
++            <solid android:color="@color/raven_action_key" />
++            <corners android:radius="20dp" />
++            <size android:width="64dp" android:height="40dp" />
++        </shape>
++    </item>
++</layer-list>
+diff --git a/java/res/drawable/raven_key_action_pressed.xml b/java/res/drawable/raven_key_action_pressed.xml
+new file mode 100644
+index 0000000..ba0a2b6
+--- /dev/null
++++ b/java/res/drawable/raven_key_action_pressed.xml
+@@ -0,0 +1,15 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:left="@dimen/raven_key_gap" android:top="@dimen/raven_key_gap"
++        android:right="@dimen/raven_key_gap" android:bottom="@dimen/raven_key_gap">
++        <shape>
++            <solid android:color="@color/raven_action_key_pressed" />
++            <corners android:radius="20dp" />
++            <size android:width="64dp" android:height="40dp" />
++        </shape>
++    </item>
++</layer-list>
+diff --git a/java/res/drawable/raven_key_functional.xml b/java/res/drawable/raven_key_functional.xml
+new file mode 100644
+index 0000000..97ce17c
+--- /dev/null
++++ b/java/res/drawable/raven_key_functional.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:state_pressed="true" android:drawable="@drawable/raven_key_pressed" />
++    <item android:drawable="@drawable/raven_key_functional_normal" />
++</selector>
+diff --git a/java/res/drawable/raven_key_functional_normal.xml b/java/res/drawable/raven_key_functional_normal.xml
+new file mode 100644
+index 0000000..9b034dd
+--- /dev/null
++++ b/java/res/drawable/raven_key_functional_normal.xml
+@@ -0,0 +1,15 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:left="@dimen/raven_key_gap" android:top="@dimen/raven_key_gap"
++        android:right="@dimen/raven_key_gap" android:bottom="@dimen/raven_key_gap">
++        <shape>
++            <solid android:color="@color/raven_key_functional" />
++            <stroke android:width="1dp" android:color="@color/raven_key_stroke" />
++            <corners android:radius="@dimen/raven_key_radius" />
++        </shape>
++    </item>
++</layer-list>
+diff --git a/java/res/drawable/raven_key_normal.xml b/java/res/drawable/raven_key_normal.xml
+new file mode 100644
+index 0000000..1803f31
+--- /dev/null
++++ b/java/res/drawable/raven_key_normal.xml
+@@ -0,0 +1,15 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:left="@dimen/raven_key_gap" android:top="@dimen/raven_key_gap"
++        android:right="@dimen/raven_key_gap" android:bottom="@dimen/raven_key_gap">
++        <shape>
++            <solid android:color="@color/raven_key" />
++            <stroke android:width="1dp" android:color="@color/raven_key_stroke" />
++            <corners android:radius="@dimen/raven_key_radius" />
++        </shape>
++    </item>
++</layer-list>
+diff --git a/java/res/drawable/raven_key_on.xml b/java/res/drawable/raven_key_on.xml
+new file mode 100644
+index 0000000..5c425da
+--- /dev/null
++++ b/java/res/drawable/raven_key_on.xml
+@@ -0,0 +1,15 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:left="@dimen/raven_key_gap" android:top="@dimen/raven_key_gap"
++        android:right="@dimen/raven_key_gap" android:bottom="@dimen/raven_key_gap">
++        <shape>
++            <solid android:color="@color/raven_key_on" />
++            <stroke android:width="1dp" android:color="@color/raven_key_stroke" />
++            <corners android:radius="@dimen/raven_key_radius" />
++        </shape>
++    </item>
++</layer-list>
+diff --git a/java/res/drawable/raven_key_popup.xml b/java/res/drawable/raven_key_popup.xml
+new file mode 100644
+index 0000000..2e169ff
+--- /dev/null
++++ b/java/res/drawable/raven_key_popup.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:state_pressed="true" android:drawable="@drawable/raven_key_popup_selected" />
++    <item android:drawable="@android:color/transparent" />
++</selector>
+diff --git a/java/res/drawable/raven_key_popup_action.xml b/java/res/drawable/raven_key_popup_action.xml
+new file mode 100644
+index 0000000..c5ca6f9
+--- /dev/null
++++ b/java/res/drawable/raven_key_popup_action.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:state_pressed="true" android:drawable="@drawable/raven_key_action_pressed" />
++    <item android:drawable="@drawable/raven_key_action" />
++</selector>
+diff --git a/java/res/drawable/raven_key_popup_selected.xml b/java/res/drawable/raven_key_popup_selected.xml
+new file mode 100644
+index 0000000..fc6e60d
+--- /dev/null
++++ b/java/res/drawable/raven_key_popup_selected.xml
+@@ -0,0 +1,14 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:left="@dimen/raven_key_gap" android:top="@dimen/raven_key_gap"
++        android:right="@dimen/raven_key_gap" android:bottom="@dimen/raven_key_gap">
++        <shape>
++            <solid android:color="@color/raven_key_pressed" />
++            <corners android:radius="@dimen/raven_key_radius" />
++        </shape>
++    </item>
++</layer-list>
+diff --git a/java/res/drawable/raven_key_pressed.xml b/java/res/drawable/raven_key_pressed.xml
+new file mode 100644
+index 0000000..cdd100c
+--- /dev/null
++++ b/java/res/drawable/raven_key_pressed.xml
+@@ -0,0 +1,15 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:left="@dimen/raven_key_gap" android:top="@dimen/raven_key_gap"
++        android:right="@dimen/raven_key_gap" android:bottom="@dimen/raven_key_gap">
++        <shape>
++            <solid android:color="@color/raven_key_pressed" />
++            <stroke android:width="1dp" android:color="@color/raven_key_stroke" />
++            <corners android:radius="@dimen/raven_key_radius" />
++        </shape>
++    </item>
++</layer-list>
+diff --git a/java/res/drawable/raven_key_preview.xml b/java/res/drawable/raven_key_preview.xml
+new file mode 100644
+index 0000000..9d3dfa3
+--- /dev/null
++++ b/java/res/drawable/raven_key_preview.xml
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Bubble shown above a pressed key. -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android">
++    <solid android:color="@color/raven_preview" />
++    <stroke android:width="1dp" android:color="@color/raven_preview_stroke" />
++    <corners android:radius="12dp" />
++</shape>
+diff --git a/java/res/drawable/raven_keyboard_background.xml b/java/res/drawable/raven_keyboard_background.xml
+new file mode 100644
+index 0000000..68031f9
+--- /dev/null
++++ b/java/res/drawable/raven_keyboard_background.xml
+@@ -0,0 +1,26 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- The bottom band of the Settings backdrop. Gradient radii are relative to the keyboard's
++     height, which is about 40% of the screen, so they are 2.5x the Settings values. -->
++<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
++    <item>
++        <color android:color="@color/raven_bg" />
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.15" android:centerY="0.75"
++                android:gradientRadius="200%p"
++                android:startColor="@color/raven_glow_1" android:endColor="#00000000" />
++        </shape>
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.8" android:centerY="-1.1"
++                android:gradientRadius="190%p"
++                android:startColor="@color/raven_glow_2" android:endColor="#00000000" />
++        </shape>
++    </item>
++</layer-list>
+diff --git a/java/res/drawable/raven_popup_panel.xml b/java/res/drawable/raven_popup_panel.xml
+new file mode 100644
+index 0000000..9d86903
+--- /dev/null
++++ b/java/res/drawable/raven_popup_panel.xml
+@@ -0,0 +1,12 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Long-press panel with the accented letters. -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android">
++    <solid android:color="@color/raven_preview" />
++    <stroke android:width="1dp" android:color="@color/raven_preview_stroke" />
++    <corners android:radius="16dp" />
++    <padding android:left="4dp" android:top="4dp" android:right="4dp" android:bottom="4dp" />
++</shape>
+diff --git a/java/res/drawable/raven_spacebar.xml b/java/res/drawable/raven_spacebar.xml
+new file mode 100644
+index 0000000..956d1e3
+--- /dev/null
++++ b/java/res/drawable/raven_spacebar.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:state_pressed="true" android:drawable="@drawable/raven_spacebar_pressed" />
++    <item android:drawable="@drawable/raven_spacebar_normal" />
++</selector>
+diff --git a/java/res/drawable/raven_spacebar_normal.xml b/java/res/drawable/raven_spacebar_normal.xml
+new file mode 100644
+index 0000000..157880a
+--- /dev/null
++++ b/java/res/drawable/raven_spacebar_normal.xml
+@@ -0,0 +1,15 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:left="@dimen/raven_key_gap" android:top="@dimen/raven_key_gap"
++        android:right="@dimen/raven_key_gap" android:bottom="@dimen/raven_key_gap">
++        <shape>
++            <solid android:color="@color/raven_key" />
++            <stroke android:width="1dp" android:color="@color/raven_key_stroke" />
++            <corners android:radius="999dp" />
++        </shape>
++    </item>
++</layer-list>
+diff --git a/java/res/drawable/raven_spacebar_pressed.xml b/java/res/drawable/raven_spacebar_pressed.xml
+new file mode 100644
+index 0000000..645d4ed
+--- /dev/null
++++ b/java/res/drawable/raven_spacebar_pressed.xml
+@@ -0,0 +1,15 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:left="@dimen/raven_key_gap" android:top="@dimen/raven_key_gap"
++        android:right="@dimen/raven_key_gap" android:bottom="@dimen/raven_key_gap">
++        <shape>
++            <solid android:color="@color/raven_key_pressed" />
++            <stroke android:width="1dp" android:color="@color/raven_key_stroke" />
++            <corners android:radius="999dp" />
++        </shape>
++    </item>
++</layer-list>
+diff --git a/java/res/drawable/raven_suggestion.xml b/java/res/drawable/raven_suggestion.xml
+new file mode 100644
+index 0000000..a7c7480
+--- /dev/null
++++ b/java/res/drawable/raven_suggestion.xml
+@@ -0,0 +1,8 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:state_pressed="true" android:drawable="@color/raven_suggestion_pressed" />
++</selector>
+diff --git a/java/res/values/attrs.xml b/java/res/values/attrs.xml
+index 8ff5a87..1a4d85e 100644
+--- a/java/res/values/attrs.xml
++++ b/java/res/values/attrs.xml
+@@ -238,6 +238,7 @@
+             <enum name="KLP" value="2" />
+             <enum name="LXXLight" value="3" />
+             <enum name="LXXDark" value="4" />
++            <enum name="RavenGlass" value="6" />
+         </attr>
+         <!-- Touch position correction -->
+         <attr name="touchPositionCorrectionData" format="reference" />
+@@ -482,6 +483,7 @@
+             <enum name="KLP" value="2" />
+             <enum name="LXXLight" value="3" />
+             <enum name="LXXDark" value="4" />
++            <enum name="RavenGlass" value="6" />
+         </attr>
+         <!-- This should be aligned with
+              {@link com.android.inputmethod.keyboard.KeyboardId#MODE_TEXT} etc. -->
+diff --git a/java/res/values/keyboard-themes.xml b/java/res/values/keyboard-themes.xml
+index 2dee317..25bfad7 100644
+--- a/java/res/values/keyboard-themes.xml
++++ b/java/res/values/keyboard-themes.xml
+@@ -23,6 +23,7 @@
+         <item>@string/keyboard_theme_material_light</item>
+         <item>@string/keyboard_theme_material_dark</item>
+         <item>@string/keyboard_theme_follow_system</item>
++        <item>@string/keyboard_theme_raven_glass</item>
+     </string-array>
+     <!-- An element must be a keyboard theme id of
+          {@link com.android.inputmethod.keyboard.KeyboardTheme#THEME_ID_ICS} etc. -->
+@@ -30,5 +31,6 @@
+         <item>3</item>
+         <item>4</item>
+         <item>5</item>
++        <item>6</item>
+     </integer-array>
+ </resources>
+diff --git a/java/res/values/raven_glass.xml b/java/res/values/raven_glass.xml
+new file mode 100644
+index 0000000..59c2e07
+--- /dev/null
++++ b/java/res/values/raven_glass.xml
+@@ -0,0 +1,33 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- RavenOS glass keyboard tokens. These are the Midnight Aurora values; the product picks a
++     variant by overlaying this file from vendor/ravenos/themes/<variant>/ (see THEME.md). -->
++<resources>
++    <!-- Backdrop: the bottom band of the Settings backdrop, so the keyboard reads as part of
++         the screen behind it. -->
++    <color name="raven_bg">#FF070B1D</color>
++    <color name="raven_glow_1">#CC0D9488</color>
++    <color name="raven_glow_2">#AA7C3AED</color>
++
++    <color name="raven_key">#1AFFFFFF</color>
++    <color name="raven_key_stroke">#24BAE6FD</color>
++    <color name="raven_key_functional">#0DFFFFFF</color>
++    <color name="raven_key_pressed">#4722D3EE</color>
++    <color name="raven_key_on">#2922D3EE</color>
++    <color name="raven_key_text">#FFF0F9FF</color>
++    <color name="raven_key_text_dim">#FFBAE6FD</color>
++    <color name="raven_key_hint">#FF7FA3C4</color>
++    <color name="raven_accent">#FF22D3EE</color>
++    <!-- Enter key fill. Deeper than the accent because the enter icon is white. -->
++    <color name="raven_action_key">#FF0E7490</color>
++    <color name="raven_action_key_pressed">#FF155E75</color>
++    <color name="raven_preview">#F51E2952</color>
++    <color name="raven_preview_stroke">#29BAE6FD</color>
++    <color name="raven_suggestion_pressed">#1FFFFFFF</color>
++
++    <dimen name="raven_key_radius">8dp</dimen>
++    <dimen name="raven_key_gap">2dp</dimen>
++</resources>
+diff --git a/java/res/values/strings.xml b/java/res/values/strings.xml
+index 6b985ce..6274c5f 100644
+--- a/java/res/values/strings.xml
++++ b/java/res/values/strings.xml
+@@ -355,6 +355,8 @@ mobile devices. [CHAR LIMIT=25] -->
+     <string name="keyboard_theme_material_dark" translatable="false">Material Dark</string>
+     <!-- The keyboard theme name, Material Light. This is marked as translatable="false" because this is a proper name of system-wide UI Theme.  -->
+     <string name="keyboard_theme_material_light" translatable="false">Material Light</string>
++    <!-- The keyboard theme name, RavenOS Glass. This is marked as translatable="false" because it is the name of the RavenOS system theme. -->
++    <string name="keyboard_theme_raven_glass" translatable="false">RavenOS Glass</string>
+ 
+     <!-- Title of the preference settings for custom input styles (language and keyboard layout pairs) [CHAR LIMIT=35]-->
+     <string name="custom_input_styles_title">Custom input styles</string>
+diff --git a/java/res/values/themes-raven-glass.xml b/java/res/values/themes-raven-glass.xml
+new file mode 100644
+index 0000000..ea0c20f
+--- /dev/null
++++ b/java/res/values/themes-raven-glass.xml
+@@ -0,0 +1,131 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- RavenOS glass keyboard. Built on the LXX dark theme (layouts, icons, sizes) with glass key
++     backgrounds and colors from raven_glass.xml. -->
++<resources xmlns:android="http://schemas.android.com/apk/res/android">
++    <style name="KeyboardTheme.Raven_Glass" parent="KeyboardIcons.LXX_Dark">
++        <item name="inputViewStyle">@style/InputView.LXX</item>
++        <item name="keyboardStyle">@style/Keyboard.Raven_Glass</item>
++        <item name="keyboardViewStyle">@style/KeyboardView.Raven_Glass</item>
++        <item name="mainKeyboardViewStyle">@style/MainKeyboardView.Raven_Glass</item>
++        <item name="emojiPalettesViewStyle">@style/EmojiPalettesView.Raven_Glass</item>
++        <item name="moreKeysKeyboardStyle">@style/MoreKeysKeyboard.Raven_Glass</item>
++        <item name="moreKeysKeyboardViewStyle">@style/MoreKeysKeyboardView.Raven_Glass</item>
++        <item name="moreKeysKeyboardViewForActionStyle">@style/MoreKeysKeyboardView.Raven_Glass.Action</item>
++        <item name="suggestionStripViewStyle">@style/SuggestionStripView.Raven_Glass</item>
++        <item name="suggestionWordStyle">@style/SuggestionWord.Raven_Glass</item>
++    </style>
++    <style
++        name="Keyboard.Raven_Glass"
++        parent="Keyboard"
++    >
++        <!-- This should be aligned with KeyboardTheme.THEME_ID_* -->
++        <item name="themeId">RavenGlass</item>
++    </style>
++    <style
++        name="KeyboardView.Raven_Glass"
++        parent="KeyboardView.LXX"
++    >
++        <item name="android:background">@drawable/raven_keyboard_background</item>
++        <item name="keyBackground">@drawable/raven_key</item>
++        <item name="functionalKeyBackground">@drawable/raven_key_functional</item>
++        <item name="spacebarBackground">@drawable/raven_spacebar</item>
++        <item name="keyTextColor">@color/raven_key_text</item>
++        <item name="keyTextInactivatedColor">@color/raven_key_hint</item>
++        <item name="functionalTextColor">@color/raven_key_text</item>
++        <item name="keyHintLetterColor">@color/raven_key_hint</item>
++        <item name="keyHintLabelColor">@color/raven_key_hint</item>
++        <item name="keyShiftedLetterHintInactivatedColor">@color/raven_key_hint</item>
++        <item name="keyShiftedLetterHintActivatedColor">@color/raven_key_text</item>
++        <item name="keyPreviewTextColor">@color/raven_key_text</item>
++    </style>
++    <style
++        name="MainKeyboardView.Raven_Glass"
++        parent="KeyboardView.Raven_Glass"
++    >
++        <item name="moreKeysKeyboardForActionLayout">@layout/more_keys_keyboard_for_action_lxx</item>
++        <item name="keyPreviewBackground">@drawable/raven_key_preview</item>
++        <item name="keyPreviewHeight">@dimen/config_key_preview_height_lxx</item>
++        <item name="keyPreviewOffset">@dimen/config_key_preview_offset_lxx</item>
++        <item name="keyPreviewShowUpAnimator">@anim/key_preview_show_up_lxx</item>
++        <item name="keyPreviewDismissAnimator">@anim/key_preview_dismiss_lxx</item>
++        <item name="gestureFloatingPreviewTextColor">@color/raven_key_text</item>
++        <item name="gestureFloatingPreviewColor">@color/raven_preview</item>
++        <item name="gestureTrailColor">@color/raven_accent</item>
++        <item name="slidingKeyInputPreviewColor">@color/raven_key_pressed</item>
++        <item name="languageOnSpacebarTextColor">@color/raven_key_hint</item>
++        <!-- A negative value to disable text shadow layer. -->
++        <item name="languageOnSpacebarTextShadowRadius">-1.0</item>
++    </style>
++    <!-- The emoji page keeps the LXX dark category icons and only takes the glass keys and
++         backdrop. -->
++    <style
++        name="EmojiPalettesView.Raven_Glass"
++        parent="EmojiPalettesView.LXX_Dark"
++    >
++        <item name="android:background">@drawable/raven_keyboard_background</item>
++        <item name="keyBackground">@drawable/raven_key</item>
++        <item name="functionalKeyBackground">@drawable/raven_key_functional</item>
++        <item name="spacebarBackground">@drawable/raven_spacebar</item>
++        <item name="keyTextColor">@color/raven_key_text</item>
++        <item name="functionalTextColor">@color/raven_key_text</item>
++        <item name="categoryPageIndicatorColor">@color/raven_accent</item>
++        <item name="categoryPageIndicatorBackground">@color/raven_bg</item>
++    </style>
++    <style
++        name="MoreKeysKeyboard.Raven_Glass"
++        parent="Keyboard.Raven_Glass"
++    >
++        <item name="keyboardTopPadding">0%p</item>
++        <item name="keyboardBottomPadding">0%p</item>
++        <item name="horizontalGap">0%p</item>
++        <item name="touchPositionCorrectionData">@null</item>
++    </style>
++    <style
++        name="MoreKeysKeyboardView.Raven_Glass"
++        parent="KeyboardView.Raven_Glass"
++    >
++        <item name="android:background">@drawable/raven_popup_panel</item>
++        <item name="keyBackground">@drawable/raven_key_popup</item>
++        <item name="divider">@null</item>
++        <item name="keyTypeface">normal</item>
++        <item name="verticalCorrection">@dimen/config_more_keys_keyboard_vertical_correction_holo</item>
++    </style>
++    <style
++        name="MoreKeysKeyboardView.Raven_Glass.Action"
++        parent="MoreKeysKeyboardView.Raven_Glass"
++    >
++        <item name="android:background">@android:color/transparent</item>
++        <item name="keyBackground">@drawable/raven_key_popup_action</item>
++        <item name="keyLabelFlags">keepBackgroundAspectRatio</item>
++    </style>
++    <style
++        name="SuggestionStripView.Raven_Glass"
++        parent="KeyboardView.Raven_Glass"
++    >
++        <item name="suggestionsCountInStrip">@integer/config_suggestions_count_in_strip</item>
++        <item name="centerSuggestionPercentile">@fraction/config_center_suggestion_percentile</item>
++        <item name="maxMoreSuggestionsRow">@integer/config_max_more_suggestions_row</item>
++        <item name="minMoreSuggestionsWidth">@fraction/config_min_more_suggestions_width</item>
++        <!-- The top of the keyboard backdrop is close to plain raven_bg, so a flat fill meets
++             it without a visible edge. -->
++        <item name="android:background">@color/raven_bg</item>
++        <item name="android:src">@drawable/suggestions_strip_divider_lxx_dark</item>
++        <item name="suggestionStripOptions">autoCorrectBold|validTypedWordBold</item>
++        <item name="colorValidTypedWord">@color/raven_key_text</item>
++        <item name="colorTypedWord">@color/raven_key_text</item>
++        <item name="colorAutoCorrect">@color/raven_key_text</item>
++        <item name="colorSuggested">@color/raven_key_text_dim</item>
++        <item name="alphaObsoleted">70%</item>
++    </style>
++    <style
++        name="SuggestionWord.Raven_Glass"
++        parent="SuggestionWord"
++    >
++        <item name="android:background">@drawable/raven_suggestion</item>
++        <item name="android:textColor">@color/raven_accent</item>
++    </style>
++</resources>
+diff --git a/java/res/xml/key_styles_number.xml b/java/res/xml/key_styles_number.xml
+index 911c276..9b1d9f2 100644
+--- a/java/res/xml/key_styles_number.xml
++++ b/java/res/xml/key_styles_number.xml
+@@ -117,7 +117,7 @@
+                 latin:keyActionFlags="enableLongPress"
+                 latin:parentStyle="numKeyBaseStyle" />
+         </case>
+-        <case latin:keyboardTheme="LXXLight|LXXDark">
++        <case latin:keyboardTheme="LXXLight|LXXDark|RavenGlass">
+             <key-style
+                 latin:styleName="tabletNumSpaceKeyStyle"
+                 latin:keySpec="!icon/space_key|!code/key_space"
+diff --git a/java/src/com/android/inputmethod/keyboard/KeyboardTheme.java b/java/src/com/android/inputmethod/keyboard/KeyboardTheme.java
+index 6ad958b..088dd73 100644
+--- a/java/src/com/android/inputmethod/keyboard/KeyboardTheme.java
++++ b/java/src/com/android/inputmethod/keyboard/KeyboardTheme.java
+@@ -40,7 +40,9 @@ public final class KeyboardTheme implements Comparable<KeyboardTheme> {
+     public static final int THEME_ID_LXX_LIGHT = 3;
+     public static final int THEME_ID_LXX_DARK = 4;
+     public static final int THEME_ID_AUTO_DARK = 5;
+-    public static final int DEFAULT_THEME_ID = THEME_ID_AUTO_DARK;
++    // RavenOS: glass keyboard that matches the Settings theme; colors come from raven_glass.xml.
++    public static final int THEME_ID_RAVEN_GLASS = 6;
++    public static final int DEFAULT_THEME_ID = THEME_ID_RAVEN_GLASS;
+ 
+     private static KeyboardTheme[] AVAILABLE_KEYBOARD_THEMES;
+ 
+@@ -54,6 +56,8 @@ public final class KeyboardTheme implements Comparable<KeyboardTheme> {
+                 VERSION_CODES.BASE),
+         new KeyboardTheme(THEME_ID_AUTO_DARK, "AutoDark", 0,
+                 Build.VERSION_CODES.Q),
++        new KeyboardTheme(THEME_ID_RAVEN_GLASS, "RavenGlass", R.style.KeyboardTheme_Raven_Glass,
++                VERSION_CODES.BASE),
+     };
+ 
+     static {
+-- 
+2.53.0
+

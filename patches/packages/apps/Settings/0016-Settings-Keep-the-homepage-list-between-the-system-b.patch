@@ -1,0 +1,96 @@
+From 8f551d78421b7d9a82b43f70f288b44e5d90d696 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 13:07:09 -0700
+Subject: [PATCH] Settings: Keep the homepage list between the system bars
+
+The homepage's scroll view used AppBarLayout's scrolling-view behavior,
+which lays it out below the search bar and taller than the screen, so
+its bottom edge sat past the navigation bar and the cards still ran
+behind the navigation buttons at scroll top; the bottom margin set
+after layout couldn't change that. Drop the behavior: the
+fitsSystemWindows CoordinatorLayout then insets the scroll view to
+between the status and navigation bars, where its edges clip and fade,
+and the content's existing top padding keeps the first card below the
+floating search bar. Drop the search bar's scroll flags too, since
+SettingsHomepageActivity already fades it out on scroll and shows it
+only at the top, and remove the margin listener.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I70460258778b884c02f7c2638d47b800baae78dc
+---
+ res/layout/search_bar.xml                         |  5 +++--
+ res/layout/settings_homepage_container.xml        |  7 +++++--
+ .../homepage/SettingsHomepageActivity.java        | 15 +--------------
+ 3 files changed, 9 insertions(+), 18 deletions(-)
+
+diff --git a/res/layout/search_bar.xml b/res/layout/search_bar.xml
+index 420c965..e44a753 100644
+--- a/res/layout/search_bar.xml
++++ b/res/layout/search_bar.xml
+@@ -21,8 +21,9 @@
+     android:id="@+id/search_bar"
+     style="@style/SearchBarStyle"
+     android:layout_width="match_parent"
+-    android:layout_height="wrap_content"
+-    app:layout_scrollFlags="scroll|enterAlways">
++    android:layout_height="wrap_content">
++    <!-- RavenOS: no AppBarLayout scroll flags; SettingsHomepageActivity fades the bar out as
++         the list scrolls and shows it only at the top. -->
+     <Toolbar
+         android:id="@+id/search_action_bar"
+         android:layout_width="match_parent"
+diff --git a/res/layout/settings_homepage_container.xml b/res/layout/settings_homepage_container.xml
+index 6a0d128..bda1a17 100644
+--- a/res/layout/settings_homepage_container.xml
++++ b/res/layout/settings_homepage_container.xml
+@@ -26,8 +26,11 @@
+     <androidx.core.widget.NestedScrollView
+         android:id="@+id/main_content_scrollable_container"
+         android:layout_width="match_parent"
+-        android:layout_height="match_parent"
+-        app:layout_behavior="com.android.settings.widget.FloatingAppBarScrollingViewBehavior">
++        android:layout_height="match_parent">
++        <!-- RavenOS: no scrolling-view behavior. It laid the list out below the search bar and
++             taller than the screen, past the navigation bar. As a plain child, the
++             fitsSystemWindows CoordinatorLayout insets it to between the system bars, and the
++             search bar, which fades itself out on scroll, floats over the content's top padding. -->
+ 
+         <LinearLayout
+             android:id="@+id/homepage_container"
+diff --git a/src/com/android/settings/homepage/SettingsHomepageActivity.java b/src/com/android/settings/homepage/SettingsHomepageActivity.java
+index 8c4e049..b4a1994 100644
+--- a/src/com/android/settings/homepage/SettingsHomepageActivity.java
++++ b/src/com/android/settings/homepage/SettingsHomepageActivity.java
+@@ -24,8 +24,6 @@ import android.graphics.Rect;
+ import android.util.Log;
+ import android.view.KeyEvent;
+ import android.view.View;
+-import android.view.ViewGroup;
+-import android.view.WindowInsets;
+ import android.widget.FrameLayout;
+ import android.widget.ImageView;
+ import android.widget.Toolbar;
+@@ -90,19 +88,8 @@ public class SettingsHomepageActivity extends FragmentActivity {
+         final NestedScrollView scroller = findViewById(R.id.main_content_scrollable_container);
+         scroller.setOnScrollChangeListener((NestedScrollView.OnScrollChangeListener)
+                 (v, x, y, oldX, oldY) -> followScroll(appBar, y));
+-        // RavenOS: the homepage lays out behind the navigation bar; end the list above it.
++        // RavenOS: clip and fade the list at the system bars.
+         ListEdges.apply(scroller);
+-        // CoordinatorLayout replaces insets listeners when attached, so check on each layout.
+-        root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
+-            final WindowInsets insets = v.getRootWindowInsets();
+-            final ViewGroup.MarginLayoutParams lp =
+-                    (ViewGroup.MarginLayoutParams) scroller.getLayoutParams();
+-            if (insets != null && lp.bottomMargin != insets.getSystemWindowInsetBottom()) {
+-                lp.bottomMargin = insets.getSystemWindowInsetBottom();
+-                // Not during this layout pass, or the change is dropped.
+-                scroller.post(() -> scroller.setLayoutParams(lp));
+-            }
+-        });
+         // RavenOS: outline the search pill in the accent while a remote has it focused.
+         final MaterialCardView searchCard = findViewById(R.id.search_bar);
+         final int cardStroke = searchCard.getStrokeColor();
+-- 
+2.53.0
+

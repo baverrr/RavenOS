@@ -1,0 +1,1418 @@
+From f676cff428d9cc44378afdb0d2c87cf0556b5be5 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 21:38:43 -0700
+Subject: [PATCH 3/5] RavenOS: Add reminders, a sleep screen and a
+ voice-controlled alarm
+
+Add three skills, English only for now, sharing one alert system:
+
+- Reminders: "remind me to call mom tomorrow at six", "what are my
+  reminders", "cancel my reminder to call mom". When due, a full-screen
+  card plays a chime and reads the reminder aloud a few times.
+- Sleep: "go to sleep until six thirty" dims the screen to a faint clock
+  at the lowest brightness and sets a wake-up alarm; it asks for a time
+  if none was given. "Wake me up at seven" only sets the alarm, and
+  "wake up" leaves the sleep screen and turns the alarm off.
+- Alert control: "turn off" and "snooze (for ten minutes)" for a ringing
+  alarm or reminder.
+
+Alerts are stored in shared preferences, scheduled with setAlarmClock,
+and scheduled again after a reboot or update. The alarm sound plays in
+bursts and pauses for a few seconds after the wake word, so the
+microphone can hear the command over it. As a privileged system app
+(START_ACTIVITIES_FROM_BACKGROUND) Dicio opens the alert screen directly;
+otherwise it falls back to a full-screen notification.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ app/src/main/AndroidManifest.xml              |  29 ++
+ .../org/stypox/dicio/alerts/AlertActivity.kt  | 248 ++++++++++++++++++
+ .../org/stypox/dicio/alerts/AlertOutputs.kt   |  51 ++++
+ .../org/stypox/dicio/alerts/AlertReceiver.kt  |  68 +++++
+ .../org/stypox/dicio/alerts/AlertTime.kt      |  75 ++++++
+ .../kotlin/org/stypox/dicio/alerts/Alerts.kt  | 153 +++++++++++
+ .../org/stypox/dicio/alerts/SleepActivity.kt  | 136 ++++++++++
+ .../org/stypox/dicio/eval/SkillHandler.kt     |   7 +
+ .../org/stypox/dicio/io/wake/WakeService.kt   |   3 +
+ .../skills/alert_control/AlertControlInfo.kt  |  29 ++
+ .../skills/alert_control/AlertControlSkill.kt |  40 +++
+ .../dicio/skills/reminder/ReminderInfo.kt     |  30 +++
+ .../dicio/skills/reminder/ReminderSkill.kt    |  97 +++++++
+ .../stypox/dicio/skills/sleep/SleepInfo.kt    |  30 +++
+ .../stypox/dicio/skills/sleep/SleepSkill.kt   |  82 ++++++
+ app/src/main/res/values/strings_ravenos.xml   |  51 ++++
+ app/src/main/sentences/en/alert_control.yml   |   7 +
+ app/src/main/sentences/en/reminder.yml        |   9 +
+ app/src/main/sentences/en/sleep.yml           |  11 +
+ app/src/main/sentences/skill_definitions.yml  |  36 +++
+ 20 files changed, 1192 insertions(+)
+ create mode 100644 app/src/main/kotlin/org/stypox/dicio/alerts/AlertActivity.kt
+ create mode 100644 app/src/main/kotlin/org/stypox/dicio/alerts/AlertOutputs.kt
+ create mode 100644 app/src/main/kotlin/org/stypox/dicio/alerts/AlertReceiver.kt
+ create mode 100644 app/src/main/kotlin/org/stypox/dicio/alerts/AlertTime.kt
+ create mode 100644 app/src/main/kotlin/org/stypox/dicio/alerts/Alerts.kt
+ create mode 100644 app/src/main/kotlin/org/stypox/dicio/alerts/SleepActivity.kt
+ create mode 100644 app/src/main/kotlin/org/stypox/dicio/skills/alert_control/AlertControlInfo.kt
+ create mode 100644 app/src/main/kotlin/org/stypox/dicio/skills/alert_control/AlertControlSkill.kt
+ create mode 100644 app/src/main/kotlin/org/stypox/dicio/skills/reminder/ReminderInfo.kt
+ create mode 100644 app/src/main/kotlin/org/stypox/dicio/skills/reminder/ReminderSkill.kt
+ create mode 100644 app/src/main/kotlin/org/stypox/dicio/skills/sleep/SleepInfo.kt
+ create mode 100644 app/src/main/kotlin/org/stypox/dicio/skills/sleep/SleepSkill.kt
+ create mode 100644 app/src/main/res/values/strings_ravenos.xml
+ create mode 100644 app/src/main/sentences/en/alert_control.yml
+ create mode 100644 app/src/main/sentences/en/reminder.yml
+ create mode 100644 app/src/main/sentences/en/sleep.yml
+
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index c66e4da..eab1f2c 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -10,6 +10,10 @@
+     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
++    <!-- RavenOS: granted to Dicio as a privileged system app, so the wake word, reminders and
++         the wake-up alarm can open their screens from the background -->
++    <uses-permission android:name="android.permission.START_ACTIVITIES_FROM_BACKGROUND"
++        tools:ignore="ProtectedPermissions" />
+     <uses-permission android:name="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE" tools:ignore="ProtectedPermissions"/>
+ 
+     <!-- required by the download manager for APIs < Q -->
+@@ -113,6 +117,31 @@
+             </intent-filter>
+         </service>
+ 
++        <!-- RavenOS: reminders, the sleep screen and the wake-up alarm -->
++        <activity
++            android:name=".alerts.AlertActivity"
++            android:exported="false"
++            android:launchMode="singleTop"
++            android:showOnLockScreen="true"
++            android:excludeFromRecents="true"
++            android:taskAffinity="org.stypox.dicio.alerts" />
++
++        <activity
++            android:name=".alerts.SleepActivity"
++            android:exported="false"
++            android:launchMode="singleTop"
++            android:excludeFromRecents="true"
++            android:taskAffinity="org.stypox.dicio.alerts" />
++
++        <receiver
++            android:name=".alerts.AlertReceiver"
++            android:exported="true">
++            <intent-filter>
++                <action android:name="android.intent.action.BOOT_COMPLETED" />
++                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
++            </intent-filter>
++        </receiver>
++
+         <receiver
+             android:name=".io.wake.BootBroadcastReceiver"
+             android:exported="true">
+diff --git a/app/src/main/kotlin/org/stypox/dicio/alerts/AlertActivity.kt b/app/src/main/kotlin/org/stypox/dicio/alerts/AlertActivity.kt
+new file mode 100644
+index 0000000..906b602
+--- /dev/null
++++ b/app/src/main/kotlin/org/stypox/dicio/alerts/AlertActivity.kt
+@@ -0,0 +1,248 @@
++package org.stypox.dicio.alerts
++
++import android.content.Context
++import android.content.Intent
++import android.media.AudioAttributes
++import android.media.Ringtone
++import android.media.RingtoneManager
++import android.os.Bundle
++import android.os.Handler
++import android.os.Looper
++import android.speech.tts.TextToSpeech
++import android.view.WindowManager
++import androidx.activity.ComponentActivity
++import androidx.activity.compose.setContent
++import androidx.compose.foundation.layout.Arrangement
++import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.Row
++import androidx.compose.foundation.layout.fillMaxSize
++import androidx.compose.foundation.layout.padding
++import androidx.compose.material3.Button
++import androidx.compose.material3.MaterialTheme
++import androidx.compose.material3.OutlinedButton
++import androidx.compose.material3.Surface
++import androidx.compose.material3.Text
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.mutableStateOf
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.res.stringResource
++import androidx.compose.ui.text.style.TextAlign
++import androidx.compose.ui.unit.dp
++import androidx.lifecycle.lifecycleScope
++import kotlinx.coroutines.launch
++import org.stypox.dicio.R
++import org.stypox.dicio.settings.datastore.Theme
++import org.stypox.dicio.ui.theme.AppTheme
++import java.time.LocalTime
++import java.time.format.DateTimeFormatter
++import java.time.format.FormatStyle
++
++/**
++ * Full-screen alert for a reminder or the wake-up alarm. It rings until turned off by touch or
++ * by voice ("Hey Raven, turn off"), and goes quiet briefly whenever the wake word is heard.
++ */
++class AlertActivity : ComponentActivity() {
++    private val handler = Handler(Looper.getMainLooper())
++    private val alertState = mutableStateOf<Alert?>(null)
++    private var ringtone: Ringtone? = null
++    private var tts: TextToSpeech? = null
++    private var ttsReady = false
++    private var startedAt = 0L
++    private var spokenTimes = 0
++
++    private val tick = object : Runnable {
++        override fun run() {
++            onTick()
++            handler.postDelayed(this, TICK_MILLIS)
++        }
++    }
++
++    override fun onCreate(savedInstanceState: Bundle?) {
++        super.onCreate(savedInstanceState)
++        setShowWhenLocked(true)
++        setTurnScreenOn(true)
++        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
++        window.attributes = window.attributes.apply {
++            screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_FULL
++        }
++
++        tts = TextToSpeech(this) { status -> ttsReady = status == TextToSpeech.SUCCESS }
++        startAlert(intent)
++
++        setContent {
++            AppTheme(theme = Theme.THEME_DARK) {
++                alertState.value?.let { AlertScreen(it) }
++            }
++        }
++
++        lifecycleScope.launch {
++            Alerts.ringing.collect { ringing ->
++                if (ringing == null) {
++                    finish()
++                }
++            }
++        }
++        handler.post(tick)
++    }
++
++    override fun onNewIntent(intent: Intent) {
++        super.onNewIntent(intent)
++        startAlert(intent)
++    }
++
++    override fun onDestroy() {
++        handler.removeCallbacks(tick)
++        stopSound()
++        tts?.shutdown()
++        if (Alerts.ringing.value?.id == alertState.value?.id) {
++            Alerts.turnOff()
++        }
++        super.onDestroy()
++    }
++
++    private fun startAlert(intent: Intent) {
++        val alert = Alert(
++            id = intent.getLongExtra(EXTRA_ID, -1),
++            time = intent.getLongExtra(EXTRA_TIME, System.currentTimeMillis()),
++            kind = AlertKind.valueOf(intent.getStringExtra(EXTRA_KIND) ?: AlertKind.WAKE.name),
++            text = intent.getStringExtra(EXTRA_TEXT) ?: "",
++        )
++        stopSound()
++        alertState.value = alert
++        startedAt = System.currentTimeMillis()
++        spokenTimes = 0
++        ringtone = RingtoneManager.getActualDefaultRingtoneUri(
++            this,
++            if (alert.kind == AlertKind.WAKE) RingtoneManager.TYPE_ALARM
++            else RingtoneManager.TYPE_NOTIFICATION,
++        )?.let { RingtoneManager.getRingtone(this, it) }?.apply {
++            audioAttributes = AudioAttributes.Builder()
++                .setUsage(AudioAttributes.USAGE_ALARM)
++                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
++                .build()
++        }
++        Alerts.startRinging(alert)
++    }
++
++    private fun onTick() {
++        val alert = alertState.value ?: return
++        val now = System.currentTimeMillis()
++        if (now - startedAt > MAX_RING_MILLIS) {
++            Alerts.turnOff()
++            return
++        }
++        val quiet = now < Alerts.quietUntil.value
++        val second = (now - startedAt) / 1000
++
++        when (alert.kind) {
++            AlertKind.WAKE -> {
++                // Ring in bursts, so the microphone can hear "Hey Raven" in the gaps.
++                val inBurst = second % WAKE_CYCLE_SECONDS < WAKE_BURST_SECONDS
++                if (inBurst && !quiet) playSound() else stopSound()
++                if (second == WAKE_BURST_SECONDS.toLong() && !quiet) {
++                    speak(getString(R.string.alert_good_morning, formatTime(LocalTime.now())))
++                }
++            }
++            AlertKind.REMINDER -> {
++                // A chime, then the reminder read aloud, repeated a few times.
++                if (second % REMINDER_REPEAT_SECONDS == 0L && spokenTimes < REMINDER_REPEATS &&
++                    !quiet) {
++                    spokenTimes += 1
++                    stopSound()
++                    playSound()
++                    handler.postDelayed({
++                        speak(getString(R.string.alert_reminder_speech, alert.text))
++                    }, REMINDER_SPEECH_DELAY_MILLIS)
++                }
++            }
++        }
++    }
++
++    private fun playSound() {
++        if (ringtone?.isPlaying == false) {
++            ringtone?.play()
++        }
++    }
++
++    private fun stopSound() {
++        ringtone?.stop()
++    }
++
++    private fun speak(text: String) {
++        if (ttsReady) {
++            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "alert")
++        }
++    }
++
++    @Composable
++    private fun AlertScreen(alert: Alert) {
++        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
++            Column(
++                modifier = Modifier.fillMaxSize().padding(32.dp),
++                verticalArrangement = Arrangement.spacedBy(24.dp, Alignment.CenterVertically),
++                horizontalAlignment = Alignment.CenterHorizontally,
++            ) {
++                Text(
++                    text = formatTime(LocalTime.now()),
++                    style = MaterialTheme.typography.displayLarge,
++                )
++                Text(
++                    text = title(this@AlertActivity, alert),
++                    style = MaterialTheme.typography.headlineMedium,
++                )
++                if (alert.text.isNotBlank()) {
++                    Text(
++                        text = alert.text,
++                        style = MaterialTheme.typography.headlineSmall,
++                        textAlign = TextAlign.Center,
++                    )
++                }
++                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
++                    OutlinedButton(onClick = { Alerts.snooze(this@AlertActivity, SNOOZE_MINUTES) }) {
++                        Text(stringResource(R.string.alert_snooze, SNOOZE_MINUTES))
++                    }
++                    Button(onClick = { Alerts.turnOff() }) {
++                        Text(stringResource(R.string.alert_turn_off))
++                    }
++                }
++                Text(
++                    text = stringResource(R.string.alert_voice_hint),
++                    style = MaterialTheme.typography.bodyMedium,
++                    color = MaterialTheme.colorScheme.onSurfaceVariant,
++                )
++            }
++        }
++    }
++
++    companion object {
++        const val SNOOZE_MINUTES = 10L
++        private const val EXTRA_ID = "id"
++        private const val EXTRA_TIME = "time"
++        private const val EXTRA_KIND = "kind"
++        private const val EXTRA_TEXT = "text"
++        private const val TICK_MILLIS = 1000L
++        private const val MAX_RING_MILLIS = 15 * 60_000L
++        private const val WAKE_CYCLE_SECONDS = 9
++        private const val WAKE_BURST_SECONDS = 6
++        private const val REMINDER_REPEAT_SECONDS = 30
++        private const val REMINDER_REPEATS = 5
++        private const val REMINDER_SPEECH_DELAY_MILLIS = 1500L
++
++        fun intent(context: Context, alert: Alert): Intent =
++            Intent(context, AlertActivity::class.java)
++                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
++                .putExtra(EXTRA_ID, alert.id)
++                .putExtra(EXTRA_TIME, alert.time)
++                .putExtra(EXTRA_KIND, alert.kind.name)
++                .putExtra(EXTRA_TEXT, alert.text)
++
++        fun title(context: Context, alert: Alert): String = context.getString(
++            if (alert.kind == AlertKind.WAKE) R.string.alert_title_wake
++            else R.string.alert_title_reminder
++        )
++
++        fun formatTime(time: LocalTime): String =
++            time.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT))
++    }
++}
+diff --git a/app/src/main/kotlin/org/stypox/dicio/alerts/AlertOutputs.kt b/app/src/main/kotlin/org/stypox/dicio/alerts/AlertOutputs.kt
+new file mode 100644
+index 0000000..e8407cd
+--- /dev/null
++++ b/app/src/main/kotlin/org/stypox/dicio/alerts/AlertOutputs.kt
+@@ -0,0 +1,51 @@
++package org.stypox.dicio.alerts
++
++import org.dicio.skill.context.SkillContext
++import org.dicio.skill.skill.AlwaysBestScore
++import org.dicio.skill.skill.AlwaysWorstScore
++import org.dicio.skill.skill.InteractionPlan
++import org.dicio.skill.skill.Score
++import org.dicio.skill.skill.Skill
++import org.dicio.skill.skill.SkillInfo
++import org.dicio.skill.skill.SkillOutput
++import org.dicio.skill.skill.Specificity
++import org.stypox.dicio.io.graphical.HeadlineSpeechSkillOutput
++import java.time.LocalDateTime
++
++/** A spoken answer that is also shown as a headline. */
++class AlertSpeechOutput(private val speech: String) : HeadlineSpeechSkillOutput {
++    override fun getSpeechOutput(ctx: SkillContext): String = speech
++}
++
++/**
++ * Asks a question and listens for a time in the answer, e.g. "What time should I wake you
++ * up?", then hands the time to [onGotTime].
++ */
++class AskTimeOutput(
++    private val question: String,
++    private val skillInfo: SkillInfo,
++    private val onGotTime: suspend (LocalDateTime) -> SkillOutput,
++) : HeadlineSpeechSkillOutput {
++    override fun getSpeechOutput(ctx: SkillContext): String = question
++
++    override fun getInteractionPlan(ctx: SkillContext): InteractionPlan {
++        val timeSkill = object : Skill<LocalDateTime?>(skillInfo, Specificity.HIGH) {
++            override fun score(ctx: SkillContext, input: String): Pair<Score, LocalDateTime?> {
++                val time = AlertTime.extract(ctx.parserFormatter!!, input).first
++                return Pair(if (time == null) AlwaysWorstScore else AlwaysBestScore, time)
++            }
++
++            override suspend fun generateOutput(
++                ctx: SkillContext,
++                inputData: LocalDateTime?,
++            ): SkillOutput = onGotTime(
++                // AlwaysWorstScore above means inputData is never null here
++                inputData ?: throw IllegalStateException("No time was recognized")
++            )
++        }
++        return InteractionPlan.StartSubInteraction(
++            reopenMicrophone = true,
++            nextSkills = listOf(timeSkill),
++        )
++    }
++}
+diff --git a/app/src/main/kotlin/org/stypox/dicio/alerts/AlertReceiver.kt b/app/src/main/kotlin/org/stypox/dicio/alerts/AlertReceiver.kt
+new file mode 100644
+index 0000000..e292770
+--- /dev/null
++++ b/app/src/main/kotlin/org/stypox/dicio/alerts/AlertReceiver.kt
+@@ -0,0 +1,68 @@
++package org.stypox.dicio.alerts
++
++import android.app.NotificationChannel
++import android.app.NotificationManager
++import android.app.PendingIntent
++import android.content.BroadcastReceiver
++import android.content.Context
++import android.content.Intent
++import android.util.Log
++import androidx.core.app.NotificationCompat
++import org.stypox.dicio.R
++import org.stypox.dicio.io.wake.canStartFromBackground
++
++/**
++ * Rings an alert when its alarm fires, and schedules every stored alert again after a reboot
++ * or an app update (alerts whose time passed meanwhile ring right away).
++ */
++class AlertReceiver : BroadcastReceiver() {
++    override fun onReceive(context: Context, intent: Intent) {
++        when (intent.action) {
++            ACTION_FIRE -> {
++                val alert = Alerts.take(context, intent.getLongExtra(EXTRA_ID, -1)) ?: return
++                ring(context, alert)
++            }
++            Intent.ACTION_BOOT_COMPLETED,
++            Intent.ACTION_MY_PACKAGE_REPLACED -> Alerts.rescheduleAll(context)
++        }
++    }
++
++    private fun ring(context: Context, alert: Alert) {
++        Log.d(TAG, "Ringing alert ${alert.id} (${alert.kind})")
++        val activityIntent = AlertActivity.intent(context, alert)
++        if (canStartFromBackground(context)) {
++            context.startActivity(activityIntent)
++            return
++        }
++
++        // Without the RavenOS system app permission, Android 10+ only lets us start the
++        // activity through a full-screen notification.
++        val manager = context.getSystemService(NotificationManager::class.java)
++        manager.createNotificationChannel(NotificationChannel(
++            CHANNEL_ID,
++            context.getString(R.string.alert_channel_name),
++            NotificationManager.IMPORTANCE_HIGH,
++        ))
++        val pendingIntent = PendingIntent.getActivity(
++            context, alert.id.toInt(), activityIntent,
++            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
++        )
++        manager.notify(alert.id.toInt(), NotificationCompat.Builder(context, CHANNEL_ID)
++            .setSmallIcon(R.drawable.ic_hearing_white)
++            .setContentTitle(AlertActivity.title(context, alert))
++            .setContentText(alert.text)
++            .setCategory(NotificationCompat.CATEGORY_ALARM)
++            .setPriority(NotificationCompat.PRIORITY_MAX)
++            .setFullScreenIntent(pendingIntent, true)
++            .setContentIntent(pendingIntent)
++            .setAutoCancel(true)
++            .build())
++    }
++
++    companion object {
++        val TAG = AlertReceiver::class.simpleName
++        const val ACTION_FIRE = "org.stypox.dicio.alerts.FIRE"
++        const val EXTRA_ID = "id"
++        private const val CHANNEL_ID = "alerts"
++    }
++}
+diff --git a/app/src/main/kotlin/org/stypox/dicio/alerts/AlertTime.kt b/app/src/main/kotlin/org/stypox/dicio/alerts/AlertTime.kt
+new file mode 100644
+index 0000000..1e194b9
+--- /dev/null
++++ b/app/src/main/kotlin/org/stypox/dicio/alerts/AlertTime.kt
+@@ -0,0 +1,75 @@
++package org.stypox.dicio.alerts
++
++import org.dicio.numbers.ParserFormatter
++import java.time.Duration
++import java.time.LocalDate
++import java.time.LocalDateTime
++import java.time.ZoneId
++
++object AlertTime {
++    private val CONNECTORS = setOf(
++        "at", "on", "in", "by", "for", "to", "about", "that", "until", "till", "me", "and", "of"
++    )
++    private val MORNING = Regex("\\b(a ?m|morning)\\b", RegexOption.IGNORE_CASE)
++
++    /**
++     * Splits a spoken phrase such as "call mom tomorrow at six pm" into the time it names (moved
++     * to its next occurrence, see [nextOccurrence]) and the remaining words ("call mom").
++     */
++    fun extract(
++        parserFormatter: ParserFormatter,
++        text: String,
++        now: LocalDateTime = LocalDateTime.now(),
++    ): Pair<LocalDateTime?, String> {
++        var time: LocalDateTime? = null
++        val rest = StringBuilder()
++        for (item in parserFormatter.extractDateTime(text).now(now).parseMixedWithText()) {
++            if (item is LocalDateTime && time == null) {
++                time = item
++            } else {
++                rest.append(item.toString())
++            }
++        }
++        return Pair(
++            time?.let { nextOccurrence(it, now, explicitMorning = MORNING.containsMatchIn(text)) },
++            trimConnectors(rest.toString()),
++        )
++    }
++
++    /**
++     * A time without a date that already passed today most likely means the next one: "at six"
++     * said at 8 pm means 6 am tomorrow, and said at 10 am it means 6 pm today.
++     */
++    fun nextOccurrence(
++        time: LocalDateTime,
++        now: LocalDateTime,
++        explicitMorning: Boolean,
++    ): LocalDateTime {
++        if (time.isAfter(now) || Duration.between(time, now) > Duration.ofDays(1)) {
++            return time
++        }
++        val evening = time.plusHours(12)
++        if (!explicitMorning && time.hour < 12 && evening.isAfter(now) &&
++            evening.toLocalDate() == time.toLocalDate()) {
++            return evening
++        }
++        return time.plusDays(1)
++    }
++
++    /** "tomorrow at 7:00 AM", for both speech and the screen. */
++    fun describe(parserFormatter: ParserFormatter, time: LocalDateTime): String =
++        parserFormatter.niceDateTime(time).now(LocalDate.now()).get()
++
++    fun toEpochMillis(time: LocalDateTime): Long =
++        time.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
++
++    fun fromEpochMillis(millis: Long): LocalDateTime =
++        LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(millis), ZoneId.systemDefault())
++
++    private fun trimConnectors(text: String): String {
++        val words = text.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.toMutableList()
++        while (words.isNotEmpty() && words.first().lowercase() in CONNECTORS) words.removeAt(0)
++        while (words.isNotEmpty() && words.last().lowercase() in CONNECTORS) words.removeAt(words.size - 1)
++        return words.joinToString(" ")
++    }
++}
+diff --git a/app/src/main/kotlin/org/stypox/dicio/alerts/Alerts.kt b/app/src/main/kotlin/org/stypox/dicio/alerts/Alerts.kt
+new file mode 100644
+index 0000000..e553a2c
+--- /dev/null
++++ b/app/src/main/kotlin/org/stypox/dicio/alerts/Alerts.kt
+@@ -0,0 +1,153 @@
++package org.stypox.dicio.alerts
++
++import android.app.AlarmManager
++import android.app.PendingIntent
++import android.content.Context
++import android.content.Intent
++import kotlinx.coroutines.flow.MutableStateFlow
++import kotlinx.coroutines.flow.StateFlow
++import org.json.JSONArray
++import org.json.JSONObject
++import org.stypox.dicio.MainActivity
++
++enum class AlertKind { REMINDER, WAKE }
++
++/** A reminder, or the wake-up alarm set when going to sleep. [time] is epoch milliseconds. */
++data class Alert(val id: Long, val time: Long, val kind: AlertKind, val text: String)
++
++/**
++ * RavenOS: stores, schedules and rings reminders and wake-up alarms. Alerts survive reboots
++ * (see [AlertReceiver]) and ring in [AlertActivity] until turned off, by voice or by touch.
++ */
++object Alerts {
++    private const val PREFS = "ravenos_alerts"
++    private const val KEY_ALERTS = "alerts"
++    private const val KEY_NEXT_ID = "next_id"
++
++    private val _ringing = MutableStateFlow<Alert?>(null)
++    /** The alert that is going off right now, if any. */
++    val ringing: StateFlow<Alert?> = _ringing
++
++    private val _sleeping = MutableStateFlow(false)
++    /** Whether the dimmed sleep screen is showing. */
++    val sleeping: StateFlow<Boolean> = _sleeping
++
++    private val _quietUntil = MutableStateFlow(0L)
++    /** Ringing stays quiet until this time, so the microphone can hear a command. */
++    val quietUntil: StateFlow<Long> = _quietUntil
++
++    fun all(context: Context): List<Alert> = load(context).sortedBy { it.time }
++
++    fun add(context: Context, time: Long, kind: AlertKind, text: String): Alert {
++        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
++        val id = prefs.getLong(KEY_NEXT_ID, 1)
++        prefs.edit().putLong(KEY_NEXT_ID, id + 1).apply()
++        val alert = Alert(id, time, kind, text)
++        save(context, load(context) + alert)
++        schedule(context, alert)
++        return alert
++    }
++
++    fun remove(context: Context, alert: Alert) {
++        save(context, load(context).filter { it.id != alert.id })
++        alarmManager(context).cancel(firePendingIntent(context, alert.id))
++    }
++
++    /** Called when an alarm fires: forgets the alert and returns it, if it still exists. */
++    fun take(context: Context, id: Long): Alert? {
++        val alerts = load(context)
++        val alert = alerts.firstOrNull { it.id == id } ?: return null
++        save(context, alerts.filter { it.id != id })
++        return alert
++    }
++
++    /** Schedules every stored alert again; alarms are lost on reboot. */
++    fun rescheduleAll(context: Context) {
++        for (alert in load(context)) {
++            schedule(context, alert)
++        }
++    }
++
++    fun startRinging(alert: Alert) {
++        _ringing.value = alert
++        _sleeping.value = false
++    }
++
++    /** Stops whatever is going off. Returns false if nothing was. */
++    fun turnOff(): Boolean {
++        val wasRinging = _ringing.value != null
++        _ringing.value = null
++        return wasRinging
++    }
++
++    /** Stops whatever is going off and rings it again in [minutes]. Returns it, or null. */
++    fun snooze(context: Context, minutes: Long): Alert? {
++        val alert = _ringing.value ?: return null
++        _ringing.value = null
++        return add(context, System.currentTimeMillis() + minutes * 60_000, alert.kind, alert.text)
++    }
++
++    fun setSleeping(sleeping: Boolean) {
++        _sleeping.value = sleeping
++    }
++
++    /** The wake word was heard: hold the alarm sound for a while so the command is heard. */
++    fun onWakeWord() {
++        _quietUntil.value = System.currentTimeMillis() + QUIET_AFTER_WAKE_WORD_MILLIS
++    }
++
++    private fun schedule(context: Context, alert: Alert) {
++        // setAlarmClock is exact, fires in doze, and needs no extra permission on Android 11.
++        val showIntent = PendingIntent.getActivity(
++            context, 0, Intent(context, MainActivity::class.java),
++            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
++        )
++        alarmManager(context).setAlarmClock(
++            AlarmManager.AlarmClockInfo(alert.time, showIntent),
++            firePendingIntent(context, alert.id),
++        )
++    }
++
++    private fun firePendingIntent(context: Context, id: Long): PendingIntent =
++        PendingIntent.getBroadcast(
++            context, id.toInt(),
++            Intent(context, AlertReceiver::class.java)
++                .setAction(AlertReceiver.ACTION_FIRE)
++                .putExtra(AlertReceiver.EXTRA_ID, id),
++            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
++        )
++
++    private fun alarmManager(context: Context) =
++        context.getSystemService(AlarmManager::class.java)
++
++    private fun load(context: Context): List<Alert> {
++        val json = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
++            .getString(KEY_ALERTS, null) ?: return listOf()
++        val array = JSONArray(json)
++        return (0 until array.length()).map { i ->
++            val o = array.getJSONObject(i)
++            Alert(
++                id = o.getLong("id"),
++                time = o.getLong("time"),
++                kind = AlertKind.valueOf(o.getString("kind")),
++                text = o.getString("text"),
++            )
++        }
++    }
++
++    private fun save(context: Context, alerts: List<Alert>) {
++        val array = JSONArray()
++        for (alert in alerts) {
++            array.put(JSONObject()
++                .put("id", alert.id)
++                .put("time", alert.time)
++                .put("kind", alert.kind.name)
++                .put("text", alert.text))
++        }
++        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
++            .putString(KEY_ALERTS, array.toString())
++            .apply()
++    }
++
++    private const val QUIET_AFTER_WAKE_WORD_MILLIS = 12_000L
++}
+diff --git a/app/src/main/kotlin/org/stypox/dicio/alerts/SleepActivity.kt b/app/src/main/kotlin/org/stypox/dicio/alerts/SleepActivity.kt
+new file mode 100644
+index 0000000..2482351
+--- /dev/null
++++ b/app/src/main/kotlin/org/stypox/dicio/alerts/SleepActivity.kt
+@@ -0,0 +1,136 @@
++package org.stypox.dicio.alerts
++
++import android.content.Context
++import android.content.Intent
++import android.os.Bundle
++import android.view.WindowManager
++import androidx.activity.ComponentActivity
++import androidx.activity.compose.setContent
++import androidx.compose.foundation.background
++import androidx.compose.foundation.gestures.detectTapGestures
++import androidx.compose.foundation.layout.Arrangement
++import androidx.compose.foundation.layout.Column
++import androidx.compose.foundation.layout.fillMaxSize
++import androidx.compose.material3.MaterialTheme
++import androidx.compose.material3.Text
++import androidx.compose.runtime.Composable
++import androidx.compose.runtime.LaunchedEffect
++import androidx.compose.runtime.getValue
++import androidx.compose.runtime.mutableStateOf
++import androidx.compose.runtime.remember
++import androidx.compose.runtime.setValue
++import androidx.compose.ui.Alignment
++import androidx.compose.ui.Modifier
++import androidx.compose.ui.graphics.Color
++import androidx.compose.ui.input.pointer.pointerInput
++import androidx.compose.ui.res.stringResource
++import androidx.lifecycle.lifecycleScope
++import kotlinx.coroutines.delay
++import kotlinx.coroutines.launch
++import org.stypox.dicio.R
++import java.time.Instant
++import java.time.LocalTime
++import java.time.ZoneId
++
++/**
++ * The "go to sleep" screen: black, at the lowest brightness, with a faint clock. It closes when
++ * the wake-up alarm rings, on "Hey Raven, wake up", or on a long press.
++ */
++class SleepActivity : ComponentActivity() {
++    override fun onCreate(savedInstanceState: Bundle?) {
++        super.onCreate(savedInstanceState)
++        setShowWhenLocked(true)
++        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
++        window.attributes = window.attributes.apply { screenBrightness = SLEEP_BRIGHTNESS }
++
++        val wakeTime = intent.getLongExtra(EXTRA_WAKE_TIME, 0L)
++            .takeIf { it > 0 }
++            ?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalTime() }
++
++        Alerts.setSleeping(true)
++        setContent { SleepScreen(wakeTime) }
++
++        lifecycleScope.launch {
++            Alerts.sleeping.collect { sleeping ->
++                if (!sleeping) {
++                    finish()
++                }
++            }
++        }
++    }
++
++    override fun onDestroy() {
++        if (isFinishing) {
++            Alerts.setSleeping(false)
++        }
++        super.onDestroy()
++    }
++
++    @Composable
++    private fun SleepScreen(wakeTime: LocalTime?) {
++        var now by remember { mutableStateOf(LocalTime.now()) }
++        var showHint by remember { mutableStateOf(false) }
++        LaunchedEffect(Unit) {
++            while (true) {
++                now = LocalTime.now()
++                delay(CLOCK_UPDATE_MILLIS)
++            }
++        }
++        LaunchedEffect(showHint) {
++            if (showHint) {
++                delay(HINT_MILLIS)
++                showHint = false
++            }
++        }
++
++        Column(
++            modifier = Modifier
++                .fillMaxSize()
++                .background(Color.Black)
++                .pointerInput(Unit) {
++                    detectTapGestures(
++                        onTap = { showHint = true },
++                        onLongPress = { Alerts.setSleeping(false) },
++                    )
++                },
++            verticalArrangement = Arrangement.Center,
++            horizontalAlignment = Alignment.CenterHorizontally,
++        ) {
++            Text(
++                text = AlertActivity.formatTime(now),
++                style = MaterialTheme.typography.displayLarge,
++                color = DIM_TEXT,
++            )
++            if (wakeTime != null) {
++                Text(
++                    text = stringResource(R.string.sleep_alarm_at, AlertActivity.formatTime(wakeTime)),
++                    style = MaterialTheme.typography.bodyLarge,
++                    color = DIM_TEXT,
++                )
++            }
++            if (showHint) {
++                Text(
++                    text = stringResource(R.string.sleep_wake_hint),
++                    style = MaterialTheme.typography.bodyMedium,
++                    color = DIM_TEXT,
++                )
++            }
++        }
++    }
++
++    companion object {
++        private const val EXTRA_WAKE_TIME = "wake_time"
++        private const val SLEEP_BRIGHTNESS = 0.01f
++        private const val CLOCK_UPDATE_MILLIS = 10_000L
++        private const val HINT_MILLIS = 4_000L
++        private val DIM_TEXT = Color(0xFF3A3F4B)
++
++        fun start(context: Context, wakeTime: Long?) {
++            context.startActivity(
++                Intent(context, SleepActivity::class.java)
++                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
++                    .putExtra(EXTRA_WAKE_TIME, wakeTime ?: 0L)
++            )
++        }
++    }
++}
+diff --git a/app/src/main/kotlin/org/stypox/dicio/eval/SkillHandler.kt b/app/src/main/kotlin/org/stypox/dicio/eval/SkillHandler.kt
+index 3b98f64..c5248de 100644
+--- a/app/src/main/kotlin/org/stypox/dicio/eval/SkillHandler.kt
++++ b/app/src/main/kotlin/org/stypox/dicio/eval/SkillHandler.kt
+@@ -28,6 +28,9 @@ import org.stypox.dicio.skills.open.OpenInfo
+ import org.stypox.dicio.skills.search.SearchInfo
+ import org.stypox.dicio.skills.telephone.TelephoneInfo
+ import org.stypox.dicio.skills.timer.TimerInfo
++import org.stypox.dicio.skills.alert_control.AlertControlInfo
++import org.stypox.dicio.skills.reminder.ReminderInfo
++import org.stypox.dicio.skills.sleep.SleepInfo
+ import org.stypox.dicio.skills.translation.TranslationInfo
+ import org.stypox.dicio.skills.weather.WeatherInfo
+ import org.stypox.dicio.skills.joke.JokeInfo
+@@ -58,6 +61,10 @@ class SkillHandler @Inject constructor(
+         TranslationInfo,
+         NotifyInfo,
+         FlashlightInfo,
++        // RavenOS
++        ReminderInfo,
++        SleepInfo,
++        AlertControlInfo,
+     )
+ 
+     private val fallbackSkillInfoList = listOf(
+diff --git a/app/src/main/kotlin/org/stypox/dicio/io/wake/WakeService.kt b/app/src/main/kotlin/org/stypox/dicio/io/wake/WakeService.kt
+index 8569ea9..6fca4b9 100644
+--- a/app/src/main/kotlin/org/stypox/dicio/io/wake/WakeService.kt
++++ b/app/src/main/kotlin/org/stypox/dicio/io/wake/WakeService.kt
+@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.drop
+ import kotlinx.coroutines.launch
+ import org.stypox.dicio.MainActivity
+ import org.stypox.dicio.MainActivity.Companion.ACTION_WAKE_WORD
++import org.stypox.dicio.alerts.Alerts
+ import org.stypox.dicio.R
+ import org.stypox.dicio.di.SttInputDeviceWrapper
+ import org.stypox.dicio.di.WakeDeviceWrapper
+@@ -223,6 +224,8 @@ class WakeService : Service() {
+ 
+     private fun onWakeWordDetected() {
+         Log.d(TAG, "Wake word detected")
++        // RavenOS: quiet a ringing alarm so the command after the wake word is heard
++        Alerts.onWakeWord()
+ 
+         val intent = Intent(this, MainActivity::class.java)
+         intent.setAction(ACTION_WAKE_WORD)
+diff --git a/app/src/main/kotlin/org/stypox/dicio/skills/alert_control/AlertControlInfo.kt b/app/src/main/kotlin/org/stypox/dicio/skills/alert_control/AlertControlInfo.kt
+new file mode 100644
+index 0000000..ecb2360
+--- /dev/null
++++ b/app/src/main/kotlin/org/stypox/dicio/skills/alert_control/AlertControlInfo.kt
+@@ -0,0 +1,29 @@
++package org.stypox.dicio.skills.alert_control
++
++import android.content.Context
++import androidx.compose.material.icons.Icons
++import androidx.compose.material.icons.filled.AlarmOff
++import androidx.compose.runtime.Composable
++import androidx.compose.ui.graphics.vector.rememberVectorPainter
++import org.dicio.skill.context.SkillContext
++import org.dicio.skill.skill.Skill
++import org.dicio.skill.skill.SkillInfo
++import org.stypox.dicio.R
++import org.stypox.dicio.sentences.Sentences
++
++object AlertControlInfo : SkillInfo("alert_control") {
++    override fun name(context: Context) =
++        context.getString(R.string.skill_name_alert_control)
++
++    override fun sentenceExample(context: Context) =
++        context.getString(R.string.skill_sentence_example_alert_control)
++
++    @Composable
++    override fun icon() =
++        rememberVectorPainter(Icons.Default.AlarmOff)
++
++    override fun build(ctx: SkillContext): Skill<*>? {
++        val data = Sentences.AlertControl[ctx.sentencesLanguage] ?: return null
++        return AlertControlSkill(AlertControlInfo, data)
++    }
++}
+diff --git a/app/src/main/kotlin/org/stypox/dicio/skills/alert_control/AlertControlSkill.kt b/app/src/main/kotlin/org/stypox/dicio/skills/alert_control/AlertControlSkill.kt
+new file mode 100644
+index 0000000..885be22
+--- /dev/null
++++ b/app/src/main/kotlin/org/stypox/dicio/skills/alert_control/AlertControlSkill.kt
+@@ -0,0 +1,40 @@
++package org.stypox.dicio.skills.alert_control
++
++import org.dicio.skill.context.SkillContext
++import org.dicio.skill.skill.SkillInfo
++import org.dicio.skill.skill.SkillOutput
++import org.dicio.skill.standard.StandardRecognizerData
++import org.dicio.skill.standard.StandardRecognizerSkill
++import org.stypox.dicio.R
++import org.stypox.dicio.alerts.AlertActivity
++import org.stypox.dicio.alerts.AlertSpeechOutput
++import org.stypox.dicio.alerts.Alerts
++import org.stypox.dicio.sentences.Sentences.AlertControl
++import org.stypox.dicio.util.getString
++
++/** RavenOS: "turn off" and "snooze" for a ringing wake-up alarm or reminder. */
++class AlertControlSkill(
++    correspondingSkillInfo: SkillInfo,
++    data: StandardRecognizerData<AlertControl>,
++) : StandardRecognizerSkill<AlertControl>(correspondingSkillInfo, data) {
++
++    override suspend fun generateOutput(ctx: SkillContext, inputData: AlertControl): SkillOutput {
++        return when (inputData) {
++            is AlertControl.TurnOff -> AlertSpeechOutput(ctx.getString(
++                if (Alerts.turnOff()) R.string.skill_alert_control_turned_off
++                else R.string.skill_alert_control_nothing
++            ))
++            is AlertControl.Snooze -> {
++                val minutes = inputData.duration?.toJavaDuration()?.toMinutes()?.takeIf { it > 0 }
++                    ?: AlertActivity.SNOOZE_MINUTES
++                if (Alerts.snooze(ctx.android, minutes) == null) {
++                    AlertSpeechOutput(ctx.getString(R.string.skill_alert_control_nothing))
++                } else {
++                    AlertSpeechOutput(ctx.android.resources.getQuantityString(
++                        R.plurals.skill_alert_control_snoozed, minutes.toInt(), minutes.toInt()
++                    ))
++                }
++            }
++        }
++    }
++}
+diff --git a/app/src/main/kotlin/org/stypox/dicio/skills/reminder/ReminderInfo.kt b/app/src/main/kotlin/org/stypox/dicio/skills/reminder/ReminderInfo.kt
+new file mode 100644
+index 0000000..d113d66
+--- /dev/null
++++ b/app/src/main/kotlin/org/stypox/dicio/skills/reminder/ReminderInfo.kt
+@@ -0,0 +1,30 @@
++package org.stypox.dicio.skills.reminder
++
++import android.content.Context
++import androidx.compose.material.icons.Icons
++import androidx.compose.material.icons.automirrored.filled.EventNote
++import androidx.compose.runtime.Composable
++import androidx.compose.ui.graphics.vector.rememberVectorPainter
++import org.dicio.skill.context.SkillContext
++import org.dicio.skill.skill.Skill
++import org.dicio.skill.skill.SkillInfo
++import org.stypox.dicio.R
++import org.stypox.dicio.sentences.Sentences
++
++object ReminderInfo : SkillInfo("reminder") {
++    override fun name(context: Context) =
++        context.getString(R.string.skill_name_reminder)
++
++    override fun sentenceExample(context: Context) =
++        context.getString(R.string.skill_sentence_example_reminder)
++
++    @Composable
++    override fun icon() =
++        rememberVectorPainter(Icons.AutoMirrored.Filled.EventNote)
++
++    override fun build(ctx: SkillContext): Skill<*>? {
++        val data = Sentences.Reminder[ctx.sentencesLanguage] ?: return null
++        if (ctx.parserFormatter == null) return null
++        return ReminderSkill(ReminderInfo, data)
++    }
++}
+diff --git a/app/src/main/kotlin/org/stypox/dicio/skills/reminder/ReminderSkill.kt b/app/src/main/kotlin/org/stypox/dicio/skills/reminder/ReminderSkill.kt
+new file mode 100644
+index 0000000..022b666
+--- /dev/null
++++ b/app/src/main/kotlin/org/stypox/dicio/skills/reminder/ReminderSkill.kt
+@@ -0,0 +1,97 @@
++package org.stypox.dicio.skills.reminder
++
++import org.dicio.skill.context.SkillContext
++import org.dicio.skill.skill.SkillInfo
++import org.dicio.skill.skill.SkillOutput
++import org.dicio.skill.standard.StandardRecognizerData
++import org.dicio.skill.standard.StandardRecognizerSkill
++import org.stypox.dicio.R
++import org.stypox.dicio.alerts.AlertKind
++import org.stypox.dicio.alerts.AlertSpeechOutput
++import org.stypox.dicio.alerts.AlertTime
++import org.stypox.dicio.alerts.Alerts
++import org.stypox.dicio.alerts.AskTimeOutput
++import org.stypox.dicio.sentences.Sentences.Reminder
++import org.stypox.dicio.util.getString
++import java.time.LocalDateTime
++
++/**
++ * RavenOS: "remind me to call mom tomorrow at six", "what are my reminders", "cancel my
++ * reminder to call mom". Reminders are spoken and shown on screen when due (see Alerts).
++ */
++class ReminderSkill(
++    correspondingSkillInfo: SkillInfo,
++    data: StandardRecognizerData<Reminder>,
++) : StandardRecognizerSkill<Reminder>(correspondingSkillInfo, data) {
++
++    override suspend fun generateOutput(ctx: SkillContext, inputData: Reminder): SkillOutput {
++        return when (inputData) {
++            is Reminder.Set -> set(ctx, inputData.what)
++            is Reminder.Query -> query(ctx)
++            is Reminder.Cancel -> cancel(ctx, inputData.what)
++        }
++    }
++
++    private fun set(ctx: SkillContext, what: String?): SkillOutput {
++        if (what.isNullOrBlank()) {
++            return AlertSpeechOutput(ctx.getString(R.string.skill_reminder_what))
++        }
++        val (time, text) = AlertTime.extract(ctx.parserFormatter!!, what)
++        val reminderText = text.ifBlank { what }
++        return if (time == null) {
++            AskTimeOutput(ctx.getString(R.string.skill_reminder_when), ReminderInfo) {
++                add(ctx, it, reminderText)
++            }
++        } else {
++            add(ctx, time, reminderText)
++        }
++    }
++
++    private fun add(ctx: SkillContext, time: LocalDateTime, text: String): SkillOutput {
++        Alerts.add(ctx.android, AlertTime.toEpochMillis(time), AlertKind.REMINDER, text)
++        return AlertSpeechOutput(ctx.getString(
++            R.string.skill_reminder_set, text, AlertTime.describe(ctx.parserFormatter!!, time)
++        ))
++    }
++
++    private fun query(ctx: SkillContext): SkillOutput {
++        val reminders = Alerts.all(ctx.android).filter { it.kind == AlertKind.REMINDER }
++        if (reminders.isEmpty()) {
++            return AlertSpeechOutput(ctx.getString(R.string.skill_reminder_none))
++        }
++        val list = reminders.take(MAX_LISTED).joinToString("; ") {
++            ctx.getString(
++                R.string.skill_reminder_item, it.text,
++                AlertTime.describe(ctx.parserFormatter!!, AlertTime.fromEpochMillis(it.time))
++            )
++        }
++        return AlertSpeechOutput(ctx.android.resources.getQuantityString(
++            R.plurals.skill_reminder_list, reminders.size, reminders.size, list
++        ))
++    }
++
++    private fun cancel(ctx: SkillContext, what: String?): SkillOutput {
++        val reminders = Alerts.all(ctx.android).filter { it.kind == AlertKind.REMINDER }
++        if (reminders.isEmpty()) {
++            return AlertSpeechOutput(ctx.getString(R.string.skill_reminder_none))
++        }
++        if (what.isNullOrBlank()) {
++            reminders.forEach { Alerts.remove(ctx.android, it) }
++            return AlertSpeechOutput(ctx.android.resources.getQuantityString(
++                R.plurals.skill_reminder_canceled_all, reminders.size, reminders.size
++            ))
++        }
++        // Pick the reminder sharing the most words with what was said.
++        val words = what.lowercase().split(" ").toSet()
++        val best = reminders.maxBy { r -> r.text.lowercase().split(" ").count { it in words } }
++        if (best.text.lowercase().split(" ").none { it in words }) {
++            return AlertSpeechOutput(ctx.getString(R.string.skill_reminder_not_found, what))
++        }
++        Alerts.remove(ctx.android, best)
++        return AlertSpeechOutput(ctx.getString(R.string.skill_reminder_canceled, best.text))
++    }
++
++    companion object {
++        private const val MAX_LISTED = 5
++    }
++}
+diff --git a/app/src/main/kotlin/org/stypox/dicio/skills/sleep/SleepInfo.kt b/app/src/main/kotlin/org/stypox/dicio/skills/sleep/SleepInfo.kt
+new file mode 100644
+index 0000000..c3826e5
+--- /dev/null
++++ b/app/src/main/kotlin/org/stypox/dicio/skills/sleep/SleepInfo.kt
+@@ -0,0 +1,30 @@
++package org.stypox.dicio.skills.sleep
++
++import android.content.Context
++import androidx.compose.material.icons.Icons
++import androidx.compose.material.icons.filled.Bedtime
++import androidx.compose.runtime.Composable
++import androidx.compose.ui.graphics.vector.rememberVectorPainter
++import org.dicio.skill.context.SkillContext
++import org.dicio.skill.skill.Skill
++import org.dicio.skill.skill.SkillInfo
++import org.stypox.dicio.R
++import org.stypox.dicio.sentences.Sentences
++
++object SleepInfo : SkillInfo("sleep") {
++    override fun name(context: Context) =
++        context.getString(R.string.skill_name_sleep)
++
++    override fun sentenceExample(context: Context) =
++        context.getString(R.string.skill_sentence_example_sleep)
++
++    @Composable
++    override fun icon() =
++        rememberVectorPainter(Icons.Default.Bedtime)
++
++    override fun build(ctx: SkillContext): Skill<*>? {
++        val data = Sentences.Sleep[ctx.sentencesLanguage] ?: return null
++        if (ctx.parserFormatter == null) return null
++        return SleepSkill(SleepInfo, data)
++    }
++}
+diff --git a/app/src/main/kotlin/org/stypox/dicio/skills/sleep/SleepSkill.kt b/app/src/main/kotlin/org/stypox/dicio/skills/sleep/SleepSkill.kt
+new file mode 100644
+index 0000000..440fc2e
+--- /dev/null
++++ b/app/src/main/kotlin/org/stypox/dicio/skills/sleep/SleepSkill.kt
+@@ -0,0 +1,82 @@
++package org.stypox.dicio.skills.sleep
++
++import android.os.Handler
++import android.os.Looper
++import org.dicio.skill.context.SkillContext
++import org.dicio.skill.skill.SkillInfo
++import org.dicio.skill.skill.SkillOutput
++import org.dicio.skill.standard.StandardRecognizerData
++import org.dicio.skill.standard.StandardRecognizerSkill
++import org.stypox.dicio.R
++import org.stypox.dicio.alerts.AlertKind
++import org.stypox.dicio.alerts.AlertSpeechOutput
++import org.stypox.dicio.alerts.AlertTime
++import org.stypox.dicio.alerts.Alerts
++import org.stypox.dicio.alerts.AskTimeOutput
++import org.stypox.dicio.alerts.SleepActivity
++import org.stypox.dicio.sentences.Sentences.Sleep
++import org.stypox.dicio.util.getString
++import java.time.LocalDateTime
++
++/**
++ * RavenOS: "go to sleep until six thirty" dims the screen to a faint clock and sets a wake-up
++ * alarm; "wake me up at seven" only sets the alarm; "wake up" leaves the sleep screen and
++ * cancels the alarm. "Turn off" (see alert_control) stops the alarm when it rings.
++ */
++class SleepSkill(
++    correspondingSkillInfo: SkillInfo,
++    data: StandardRecognizerData<Sleep>,
++) : StandardRecognizerSkill<Sleep>(correspondingSkillInfo, data) {
++
++    override suspend fun generateOutput(ctx: SkillContext, inputData: Sleep): SkillOutput {
++        return when (inputData) {
++            is Sleep.GoToSleep -> withTime(ctx, inputData.time) { setWakeAlarm(ctx, it, sleep = true) }
++            is Sleep.Alarm -> withTime(ctx, inputData.time) { setWakeAlarm(ctx, it, sleep = false) }
++            is Sleep.WakeUp -> wakeUp(ctx)
++        }
++    }
++
++    private fun withTime(
++        ctx: SkillContext,
++        spokenTime: String?,
++        onTime: (LocalDateTime) -> SkillOutput,
++    ): SkillOutput {
++        val time = spokenTime?.let { AlertTime.extract(ctx.parserFormatter!!, it).first }
++        return time?.let(onTime)
++            ?: AskTimeOutput(ctx.getString(R.string.skill_sleep_when), SleepInfo) { onTime(it) }
++    }
++
++    private fun setWakeAlarm(ctx: SkillContext, time: LocalDateTime, sleep: Boolean): SkillOutput {
++        // Only one wake-up alarm at a time.
++        Alerts.all(ctx.android).filter { it.kind == AlertKind.WAKE }
++            .forEach { Alerts.remove(ctx.android, it) }
++        val millis = AlertTime.toEpochMillis(time)
++        Alerts.add(ctx.android, millis, AlertKind.WAKE, "")
++        val described = AlertTime.describe(ctx.parserFormatter!!, time)
++
++        if (!sleep) {
++            return AlertSpeechOutput(ctx.getString(R.string.skill_sleep_alarm_set, described))
++        }
++        // Give the reply a moment to be heard before the screen goes dark.
++        Handler(Looper.getMainLooper()).postDelayed(
++            { SleepActivity.start(ctx.android, millis) }, SLEEP_SCREEN_DELAY_MILLIS
++        )
++        return AlertSpeechOutput(ctx.getString(R.string.skill_sleep_good_night, described))
++    }
++
++    private fun wakeUp(ctx: SkillContext): SkillOutput {
++        val wasSleeping = Alerts.sleeping.value
++        Alerts.setSleeping(false)
++        val alarms = Alerts.all(ctx.android).filter { it.kind == AlertKind.WAKE }
++        alarms.forEach { Alerts.remove(ctx.android, it) }
++        return AlertSpeechOutput(ctx.getString(
++            if (alarms.isNotEmpty()) R.string.skill_sleep_awake_alarm_off
++            else if (wasSleeping) R.string.skill_sleep_awake
++            else R.string.skill_sleep_not_sleeping
++        ))
++    }
++
++    companion object {
++        private const val SLEEP_SCREEN_DELAY_MILLIS = 3_000L
++    }
++}
+diff --git a/app/src/main/res/values/strings_ravenos.xml b/app/src/main/res/values/strings_ravenos.xml
+new file mode 100644
+index 0000000..96ba093
+--- /dev/null
++++ b/app/src/main/res/values/strings_ravenos.xml
+@@ -0,0 +1,51 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- RavenOS: reminders, the sleep screen and the wake-up alarm. English only for now. -->
++<resources>
++    <string name="skill_name_reminder">Reminders</string>
++    <string name="skill_sentence_example_reminder">Remind me to call mom tomorrow at six pm</string>
++    <string name="skill_reminder_what">What should I remind you about, and when? For example: remind me to take the bins out at eight</string>
++    <string name="skill_reminder_when">When should I remind you?</string>
++    <string name="skill_reminder_set">OK, I\'ll remind you: %1$s, %2$s</string>
++    <string name="skill_reminder_none">You don\'t have any reminders</string>
++    <string name="skill_reminder_item">%1$s, %2$s</string>
++    <plurals name="skill_reminder_list">
++        <item quantity="one">You have one reminder: %2$s</item>
++        <item quantity="other">You have %1$d reminders: %2$s</item>
++    </plurals>
++    <plurals name="skill_reminder_canceled_all">
++        <item quantity="one">I canceled your reminder</item>
++        <item quantity="other">I canceled all %1$d reminders</item>
++    </plurals>
++    <string name="skill_reminder_canceled">I canceled the reminder: %1$s</string>
++    <string name="skill_reminder_not_found">I couldn\'t find a reminder about %1$s</string>
++
++    <string name="skill_name_sleep">Sleep and wake-up alarm</string>
++    <string name="skill_sentence_example_sleep">Go to sleep until seven thirty</string>
++    <string name="skill_sleep_when">What time should I wake you up?</string>
++    <string name="skill_sleep_good_night">Good night. I\'ll wake you up %1$s</string>
++    <string name="skill_sleep_alarm_set">OK, the alarm is set %1$s</string>
++    <string name="skill_sleep_awake">Good morning</string>
++    <string name="skill_sleep_awake_alarm_off">Good morning. I turned off the wake-up alarm</string>
++    <string name="skill_sleep_not_sleeping">I\'m already awake</string>
++
++    <string name="skill_name_alert_control">Turn off alarms and reminders</string>
++    <string name="skill_sentence_example_alert_control">Turn off</string>
++    <string name="skill_alert_control_turned_off">OK</string>
++    <string name="skill_alert_control_nothing">Nothing is going off right now</string>
++    <plurals name="skill_alert_control_snoozed">
++        <item quantity="one">Snoozed for one minute</item>
++        <item quantity="other">Snoozed for %1$d minutes</item>
++    </plurals>
++
++    <string name="alert_channel_name">Alarms and reminders</string>
++    <string name="alert_title_wake">Good morning</string>
++    <string name="alert_title_reminder">Reminder</string>
++    <string name="alert_good_morning">Good morning. It\'s %1$s</string>
++    <string name="alert_reminder_speech">Reminder: %1$s</string>
++    <string name="alert_turn_off">Turn off</string>
++    <string name="alert_snooze">Snooze %1$d min</string>
++    <string name="alert_voice_hint">Or say \"Hey Raven, turn off\"</string>
++
++    <string name="sleep_alarm_at">Alarm %1$s</string>
++    <string name="sleep_wake_hint">Say \"Hey Raven, wake up\", or touch and hold</string>
++</resources>
+diff --git a/app/src/main/sentences/en/alert_control.yml b/app/src/main/sentences/en/alert_control.yml
+new file mode 100644
+index 0000000..be34abe
+--- /dev/null
++++ b/app/src/main/sentences/en/alert_control.yml
+@@ -0,0 +1,7 @@
++turn_off:
++  - (turn|switch|shut) off (the|that)? (alarm|reminder|it)?
++  - stop|dismiss|silence|mute|quiet (the|that)? (alarm|reminder|it|ringing)?
++  - (shut up)|(i am up)|enough
++
++snooze:
++  - snooze (the|that)? (alarm|reminder|it)? (for .duration.)?
+diff --git a/app/src/main/sentences/en/reminder.yml b/app/src/main/sentences/en/reminder.yml
+new file mode 100644
+index 0000000..9c41300
+--- /dev/null
++++ b/app/src/main/sentences/en/reminder.yml
+@@ -0,0 +1,9 @@
++set:
++  - (remind me)|((set|add|create|make) (up)? a reminder) (to|about|that|of|for)? .what.
++
++query:
++  - (what are)|(tell me)|(read me)|list|show|check my|the? reminder<s?>
++  - do i have any? reminder<s?>
++
++cancel:
++  - cancel|delete|remove|clear all? my|the? reminder<s?> (to|about|for)? .what.?
+diff --git a/app/src/main/sentences/en/sleep.yml b/app/src/main/sentences/en/sleep.yml
+new file mode 100644
+index 0000000..571d93d
+--- /dev/null
++++ b/app/src/main/sentences/en/sleep.yml
+@@ -0,0 +1,11 @@
++go_to_sleep:
++  - (go to)? sleep|bed (until|till|((and)? wake me up?)) .time.
++  - (go to)? sleep|bed
++  - good night (wake me up?)? (at|in)? .time.?
++
++alarm:
++  - (wake me up?)|(set an? alarm) (at|in|for|on) .time.
++
++wake_up:
++  - wake up
++  - (stop sleeping)|(i am awake)|(good morning)
+diff --git a/app/src/main/sentences/skill_definitions.yml b/app/src/main/sentences/skill_definitions.yml
+index ed347e9..54ec75e 100644
+--- a/app/src/main/sentences/skill_definitions.yml
++++ b/app/src/main/sentences/skill_definitions.yml
+@@ -134,3 +134,39 @@ skills:
+             type: string
+           - id: target
+             type: string
++
++  # RavenOS
++  - id: reminder
++    specificity: high
++    sentences:
++      - id: set
++        captures:
++          - id: what
++            type: string
++      - id: query
++      - id: cancel
++        captures:
++          - id: what
++            type: string
++
++  - id: sleep
++    specificity: high
++    sentences:
++      - id: go_to_sleep
++        captures:
++          - id: time
++            type: string
++      - id: alarm
++        captures:
++          - id: time
++            type: string
++      - id: wake_up
++
++  - id: alert_control
++    specificity: high
++    sentences:
++      - id: turn_off
++      - id: snooze
++        captures:
++          - id: duration
++            type: duration
+-- 
+2.53.0
+

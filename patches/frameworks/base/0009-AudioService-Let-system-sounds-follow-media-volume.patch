@@ -1,0 +1,29 @@
+From d6d78ebe39f0c62fe93d2e7be6a68ce13c88a04b Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 11:32:23 -0700
+Subject: [PATCH] AudioService: Let system sounds follow media volume
+
+The Echo Show is not voice capable, so STREAM_SYSTEM (touch, navigation and keypress sounds) aliased to STREAM_RING, which has no button or slider on it. Alias it to STREAM_MUSIC instead so the volume buttons control it. Ring, notification, alarm and enforced sounds keep their own volume, so an alarm can't end up quiet.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I033633e1b5aac262ab471d2378755233017456f7
+---
+ services/core/java/com/android/server/audio/AudioService.java | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/services/core/java/com/android/server/audio/AudioService.java b/services/core/java/com/android/server/audio/AudioService.java
+index 01b4cc67..5f67e9a7 100644
+--- a/services/core/java/com/android/server/audio/AudioService.java
++++ b/services/core/java/com/android/server/audio/AudioService.java
+@@ -386,7 +386,7 @@ public class AudioService extends IAudioService.Stub
+     };
+     private final int[] STREAM_VOLUME_ALIAS_DEFAULT = new int[] {
+         AudioSystem.STREAM_VOICE_CALL,      // STREAM_VOICE_CALL
+-        AudioSystem.STREAM_RING,            // STREAM_SYSTEM
++        AudioSystem.STREAM_MUSIC,           // STREAM_SYSTEM (RavenOS: follows the volume buttons)
+         AudioSystem.STREAM_RING,            // STREAM_RING
+         AudioSystem.STREAM_MUSIC,           // STREAM_MUSIC
+         AudioSystem.STREAM_ALARM,           // STREAM_ALARM
+-- 
+2.53.0
+

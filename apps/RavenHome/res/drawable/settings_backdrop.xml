@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Backdrop behind the RavenOS settings page, the same glows as Android Settings so the
+     page reads as part of it. Colors come from settings_glass.xml (the glass theme). -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <color android:color="@color/settings_bg" />
+    </item>
+    <item>
+        <shape android:dither="true">
+            <gradient android:type="radial" android:centerX="0.15" android:centerY="0.9"
+                android:gradientRadius="80%p"
+                android:startColor="@color/settings_glow_1" android:endColor="#00000000" />
+        </shape>
+    </item>
+    <item>
+        <shape android:dither="true">
+            <gradient android:type="radial" android:centerX="0.8" android:centerY="0.15"
+                android:gradientRadius="75%p"
+                android:startColor="@color/settings_glow_2" android:endColor="#00000000" />
+        </shape>
+    </item>
+    <item>
+        <shape android:dither="true">
+            <gradient android:type="radial" android:centerX="0.55" android:centerY="0.55"
+                android:gradientRadius="55%p"
+                android:startColor="@color/settings_glow_3" android:endColor="#00000000" />
+        </shape>
+    </item>
+</layer-list>

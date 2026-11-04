@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- RavenOS default tiles. No battery saver ("battery"): the Echo has no battery. -->
+    <string name="quick_settings_tiles_default" translatable="false">
+        wifi,bt,dnd,flashlight,rotation,cell,airplane,cast,screenrecord
+    </string>
+
+    <!-- Tiles users can add. Left out: the Dark theme tile ("dark"), since RavenOS has one
+         always-dark theme, and battery saver ("battery"), since there is no battery. -->
+    <string name="quick_settings_tiles_stock" translatable="false">
+        wifi,cell,dnd,flashlight,rotation,bt,airplane,nfc,location,hotspot,inversion,saver,work,cast,night,screenrecord,reverse,ambient_display,aod,caffeine,heads_up,livedisplay,powershare,profiles,reading_mode,sync,usb_tether,volume_panel,vpn,anti_flicker
+    </string>
+
+    <!-- Back and Home only: no Recents button. An empty space stands in for it so Home
+         stays in the middle. -->
+    <string name="config_navBarLayout" translatable="false">left[.5W],back[1WC];home;space[1WC],right[.5W]</string>
+</resources>

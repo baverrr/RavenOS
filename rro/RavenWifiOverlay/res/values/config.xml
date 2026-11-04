@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- IPv4 only on Wi-Fi, so DNS goes only to the servers set for the network
+         (for example a local AdGuard Home) and never to the ISP's IPv6 DNS that the
+         router advertises. -->
+    <bool name="config_wifiIpv4Only">true</bool>
+</resources>

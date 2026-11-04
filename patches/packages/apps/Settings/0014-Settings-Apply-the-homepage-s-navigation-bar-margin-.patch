@@ -1,0 +1,54 @@
+From 5fadccc83129c388c7836ec4f4fda7f87f17097c Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 12:54:32 -0700
+Subject: [PATCH] Settings: Apply the homepage's navigation bar margin on first
+ layout
+
+The homepage's CoordinatorLayout replaces window insets listeners when
+it is attached, so the bottom margin that keeps the list above the
+navigation bar was only set after a later layout, and at scroll top the
+cards still ran behind the navigation buttons. Read the insets after
+each layout instead, and apply a changed margin in a posted layout.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I080236b119345762b5505050d628de62584e3072
+---
+ .../settings/homepage/SettingsHomepageActivity.java   | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/src/com/android/settings/homepage/SettingsHomepageActivity.java b/src/com/android/settings/homepage/SettingsHomepageActivity.java
+index 12edbdb..8c4e049 100644
+--- a/src/com/android/settings/homepage/SettingsHomepageActivity.java
++++ b/src/com/android/settings/homepage/SettingsHomepageActivity.java
+@@ -25,6 +25,7 @@ import android.util.Log;
+ import android.view.KeyEvent;
+ import android.view.View;
+ import android.view.ViewGroup;
++import android.view.WindowInsets;
+ import android.widget.FrameLayout;
+ import android.widget.ImageView;
+ import android.widget.Toolbar;
+@@ -91,14 +92,16 @@ public class SettingsHomepageActivity extends FragmentActivity {
+                 (v, x, y, oldX, oldY) -> followScroll(appBar, y));
+         // RavenOS: the homepage lays out behind the navigation bar; end the list above it.
+         ListEdges.apply(scroller);
+-        root.setOnApplyWindowInsetsListener((v, insets) -> {
++        // CoordinatorLayout replaces insets listeners when attached, so check on each layout.
++        root.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> {
++            final WindowInsets insets = v.getRootWindowInsets();
+             final ViewGroup.MarginLayoutParams lp =
+                     (ViewGroup.MarginLayoutParams) scroller.getLayoutParams();
+-            if (lp.bottomMargin != insets.getSystemWindowInsetBottom()) {
++            if (insets != null && lp.bottomMargin != insets.getSystemWindowInsetBottom()) {
+                 lp.bottomMargin = insets.getSystemWindowInsetBottom();
+-                scroller.setLayoutParams(lp);
++                // Not during this layout pass, or the change is dropped.
++                scroller.post(() -> scroller.setLayoutParams(lp));
+             }
+-            return v.onApplyWindowInsets(insets);
+         });
+         // RavenOS: outline the search pill in the accent while a remote has it focused.
+         final MaterialCardView searchCard = findViewById(R.id.search_bar);
+-- 
+2.53.0
+

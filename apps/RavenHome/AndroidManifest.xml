@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="org.ravenos.home">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.MEDIA_CONTENT_CONTROL" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_PRIVILEGED" />
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
+    <!-- Device health: the Wi-Fi network's name and signal. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.NETWORK_SETTINGS" />
+    <!-- Alarms and timers -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.INJECT_EVENTS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+    <uses-permission android:name="android.permission.START_ACTIVITIES_FROM_BACKGROUND" />
+
+    <application
+        android:name=".RavenApp"
+        android:label="@string/app_name"
+        android:icon="@drawable/ic_raven"
+        android:supportsRtl="true">
+
+        <activity
+            android:name=".HomeActivity"
+            android:theme="@style/RavenHome"
+            android:launchMode="singleTask"
+            android:stateNotNeeded="true"
+            android:excludeFromRecents="true"
+            android:resumeWhilePausing="true"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="orientation|screenSize|screenLayout|keyboard|keyboardHidden|navigation"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".AlarmsActivity"
+            android:label="@string/alarms_and_timers"
+            android:theme="@style/RavenScreen"
+            android:screenOrientation="sensorLandscape"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SHOW_ALARMS" />
+                <action android:name="android.intent.action.SHOW_TIMERS" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".RingActivity"
+            android:theme="@style/RavenRing"
+            android:launchMode="singleInstance"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:screenOrientation="sensorLandscape"
+            android:exported="false" />
+
+        <activity
+            android:name=".AppsActivity"
+            android:label="@string/all_apps"
+            android:theme="@style/RavenApps"
+            android:excludeFromRecents="true"
+            android:exported="false" />
+
+        <!-- Shown as the "RavenOS" entry at the top of Android Settings (one settings app). -->
+        <activity
+            android:name=".SettingsActivity"
+            android:label="@string/ravenos_settings_title"
+            android:theme="@style/RavenSettings"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.android.settings.action.IA_SETTINGS" />
+            </intent-filter>
+
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.homepage" />
+            <meta-data
+                android:name="com.android.settings.order"
+                android:value="-130" />
+            <meta-data
+                android:name="com.android.settings.summary"
+                android:resource="@string/ravenos_settings_summary" />
+            <meta-data
+                android:name="com.android.settings.icon"
+                android:resource="@drawable/ic_raven_mono" />
+            <!-- White raven on the RavenOS slate, instead of a tinted glyph. -->
+            <meta-data
+                android:name="com.android.settings.bg.argb"
+                android:value="#FF0F172A" />
+        </activity>
+
+        <!-- Remote buttons, as an entry in Settings › Connected devices. -->
+        <activity
+            android:name=".RemoteButtonsActivity"
+            android:label="@string/remote_title"
+            android:theme="@style/RavenScreen"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.android.settings.action.IA_SETTINGS" />
+            </intent-filter>
+
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.connect" />
+            <meta-data
+                android:name="com.android.settings.keyhint"
+                android:value="ravenos_remote_buttons" />
+            <meta-data
+                android:name="com.android.settings.summary"
+                android:resource="@string/remote_tile_summary" />
+        </activity>
+
+        <!-- Carries out the Remote buttons choices; on only while a button is changed. -->
+        <service
+            android:name=".RemoteKeyService"
+            android:label="@string/remote_title"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/remote_key_service" />
+        </service>
+
+        <!-- Speaker tuning, as an entry in Settings › Sound under the media settings. -->
+        <activity
+            android:name=".SpeakerTuningActivity"
+            android:label="@string/speaker_title"
+            android:theme="@style/RavenScreen"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.android.settings.action.IA_SETTINGS" />
+            </intent-filter>
+
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.sound" />
+            <!-- After Media volume (-180) and Play media to (-175). -->
+            <meta-data
+                android:name="com.android.settings.order"
+                android:value="-174" />
+            <meta-data
+                android:name="com.android.settings.keyhint"
+                android:value="ravenos_speaker_tuning" />
+            <meta-data
+                android:name="com.android.settings.summary"
+                android:resource="@string/speaker_tile_summary" />
+        </activity>
+
+        <!-- Device health, as an entry in Settings › About with a live summary. -->
+        <activity
+            android:name=".HealthActivity"
+            android:label="@string/health_title"
+            android:theme="@style/RavenScreen"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.android.settings.action.IA_SETTINGS" />
+            </intent-filter>
+
+            <meta-data
+                android:name="com.android.settings.category"
+                android:value="com.android.settings.category.ia.my_device_info" />
+            <!-- Just under the device name. -->
+            <meta-data
+                android:name="com.android.settings.order"
+                android:value="2" />
+            <meta-data
+                android:name="com.android.settings.keyhint"
+                android:value="ravenos_device_health" />
+            <meta-data
+                android:name="com.android.settings.summary_uri"
+                android:value="content://org.ravenos.home.health" />
+        </activity>
+
+        <provider
+            android:name=".HealthSummaryProvider"
+            android:authorities="org.ravenos.home.health"
+            android:exported="true" />
+
+        <service
+            android:name=".RingService"
+            android:exported="false" />
+
+        <!-- Our own alarm and timer broadcasts (explicit, not exported). -->
+        <receiver
+            android:name=".AlarmReceiver"
+            android:exported="false" />
+
+        <!-- Restores schedules after a reboot, clock change or app update. -->
+        <receiver
+            android:name=".SystemEventsReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+    </application>
+</manifest>

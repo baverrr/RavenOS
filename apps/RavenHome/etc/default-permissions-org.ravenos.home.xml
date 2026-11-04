@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lets the photo frame read /sdcard/Pictures/RavenOS without a prompt. -->
+<exceptions>
+    <exception package="org.ravenos.home">
+        <permission name="android.permission.READ_EXTERNAL_STORAGE" fixed="false"/>
+    </exception>
+</exceptions>

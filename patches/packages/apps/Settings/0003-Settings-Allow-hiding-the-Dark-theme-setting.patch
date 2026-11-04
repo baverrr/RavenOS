@@ -1,0 +1,62 @@
+From 2aec035f7b5b135c67e65930d1e9c5cd46ff2dbe Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 18:31:21 -0700
+Subject: [PATCH 3/3] Settings: Allow hiding the Dark theme setting
+
+Add config_show_dark_ui (default true). When a product overlay sets it
+to false, the Dark theme entries in Display and Accessibility are marked
+unsupported and the Dark theme page is left out of search. RavenOS uses
+this because it ships a single, always-dark theme.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: Ib976efe2ba614149fca710dcdb015a217d3edc4f
+---
+ res/values/config.xml                                          | 3 +++
+ .../android/settings/display/DarkUIPreferenceController.java   | 3 ++-
+ .../settings/display/darkmode/DarkModeSettingsFragment.java    | 3 ++-
+ 3 files changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/res/values/config.xml b/res/values/config.xml
+index ab25481..8e15bfc 100755
+--- a/res/values/config.xml
++++ b/res/values/config.xml
+@@ -413,6 +413,9 @@
+     <!-- Whether top_level_battery should be shown or not. -->
+     <bool name="config_show_top_level_battery">true</bool>
+ 
++    <!-- Whether the Dark theme setting (Display and Accessibility) should be shown or not. -->
++    <bool name="config_show_dark_ui">true</bool>
++
+     <!-- Whether top_level_connected_devices should be shown or not. -->
+     <bool name="config_show_top_level_connected_devices">true</bool>
+ 
+diff --git a/src/com/android/settings/display/DarkUIPreferenceController.java b/src/com/android/settings/display/DarkUIPreferenceController.java
+index 98d9a69..f0ea316 100644
+--- a/src/com/android/settings/display/DarkUIPreferenceController.java
++++ b/src/com/android/settings/display/DarkUIPreferenceController.java
+@@ -140,6 +140,7 @@ public class DarkUIPreferenceController extends TogglePreferenceController imple
+ 
+     @Override
+     public int getAvailabilityStatus() {
+-        return AVAILABLE;
++        return mContext.getResources().getBoolean(R.bool.config_show_dark_ui)
++                ? AVAILABLE : UNSUPPORTED_ON_DEVICE;
+     }
+ }
+diff --git a/src/com/android/settings/display/darkmode/DarkModeSettingsFragment.java b/src/com/android/settings/display/darkmode/DarkModeSettingsFragment.java
+index a5103b0..3c0f12c 100644
+--- a/src/com/android/settings/display/darkmode/DarkModeSettingsFragment.java
++++ b/src/com/android/settings/display/darkmode/DarkModeSettingsFragment.java
+@@ -146,7 +146,8 @@ public class DarkModeSettingsFragment extends DashboardFragment {
+             new BaseSearchIndexProvider(R.xml.dark_mode_settings) {
+                 @Override
+                 protected boolean isPageSearchEnabled(Context context) {
+-                    return !context.getSystemService(PowerManager.class).isPowerSaveMode();
++                    return context.getResources().getBoolean(R.bool.config_show_dark_ui)
++                            && !context.getSystemService(PowerManager.class).isPowerSaveMode();
+                 }
+             };
+ 
+-- 
+2.53.0
+

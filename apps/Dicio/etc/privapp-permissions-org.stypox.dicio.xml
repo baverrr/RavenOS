@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: 2026 RavenOS
+     SPDX-License-Identifier: Apache-2.0
+-->
+<!-- Lets Dicio open the assistant on "Hey Raven", and open reminders and the wake-up alarm,
+     from the background. Lineage enforces this list, so it must match Dicio's manifest. -->
+<permissions>
+    <privapp-permissions package="org.stypox.dicio">
+        <permission name="android.permission.START_ACTIVITIES_FROM_BACKGROUND" />
+    </privapp-permissions>
+</permissions>

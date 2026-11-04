@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The Echo Show 8 has no battery: hide the Battery page and the per-app
+         battery entry in App info (both also drop out of Settings search). -->
+    <bool name="config_show_top_level_battery">false</bool>
+    <bool name="config_show_app_info_settings_battery">false</bool>
+
+    <!-- One theme only (the installed glass theme, always dark): no Dark theme
+         switch in Display or Accessibility. -->
+    <bool name="config_show_dark_ui">false</bool>
+
+    <!-- No account authenticators are installed, so there is nothing to add:
+         hide Accounts from the homepage and search. -->
+    <bool name="config_show_top_level_accounts">false</bool>
+
+    <!-- No call volume: the Echo doesn't make calls. -->
+    <bool name="config_show_call_volume">false</bool>
+</resources>

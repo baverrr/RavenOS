@@ -1,0 +1,164 @@
+From 48101b8b7cf447a4304fc0559e7fbf6cdcce2e3b Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 20:35:55 -0700
+Subject: [PATCH 1/5] RavenOS: Ship "Hey Raven" as the built-in wake word
+
+Load the OpenWakeWord models from the APK's assets/openWakeWord instead
+of downloading them, so wake word detection works offline from the
+first boot, and call the default wake word "Hey Raven" in English.
+The models are copied again after an APK update, which may bring a
+retrained wake word.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../dicio/io/wake/oww/OpenWakeWordDevice.kt   | 56 ++++++++++++-------
+ app/src/main/res/values/strings.xml           | 10 ++--
+ 2 files changed, 40 insertions(+), 26 deletions(-)
+
+diff --git a/app/src/main/kotlin/org/stypox/dicio/io/wake/oww/OpenWakeWordDevice.kt b/app/src/main/kotlin/org/stypox/dicio/io/wake/oww/OpenWakeWordDevice.kt
+index 9027a73..52c32c0 100644
+--- a/app/src/main/kotlin/org/stypox/dicio/io/wake/oww/OpenWakeWordDevice.kt
++++ b/app/src/main/kotlin/org/stypox/dicio/io/wake/oww/OpenWakeWordDevice.kt
+@@ -15,8 +15,6 @@ import okhttp3.OkHttpClient
+ import org.stypox.dicio.io.wake.WakeDevice
+ import org.stypox.dicio.io.wake.WakeState
+ import org.stypox.dicio.ui.util.Progress
+-import org.stypox.dicio.util.FileToDownload
+-import org.stypox.dicio.util.downloadBinaryFilesWithPartial
+ import java.io.File
+ import java.io.IOException
+ 
+@@ -27,17 +25,22 @@ class OpenWakeWordDevice(
+     private val _state: MutableStateFlow<WakeState>
+     override val state: StateFlow<WakeState>
+ 
+-    private val cacheDir: File = appContext.cacheDir
++    // RavenOS: the models ship inside the APK (assets/openWakeWord), with "Hey Raven" as the
++    // wake word, so wake word detection works offline from the first boot.
+     private val owwFolder = File(appContext.filesDir, "openWakeWord")
+-    private val melFile = FileToDownload(MEL_URL, File(owwFolder, "melspectrogram.tflite"))
+-    private val embFile = FileToDownload(EMB_URL, File(owwFolder, "embedding.tflite"))
+-    private val wakeFile = FileToDownload(WAKE_URL, File(owwFolder, "wake.tflite"))
++    private val melFile = BundledModel("melspectrogram.tflite", File(owwFolder, "melspectrogram.tflite"))
++    private val embFile = BundledModel("embedding_model.tflite", File(owwFolder, "embedding.tflite"))
++    private val wakeFile = BundledModel("hey_raven.tflite", File(owwFolder, "wake.tflite"))
+     private val userWakeFile = userWakeFile(appContext)
+     private val userWakeFileExists = userWakeFile.exists()
+     private val allModelFiles =
+         // wakeFile is not needed if we want to use the userWakeFile instead
+         if (userWakeFileExists) listOf(melFile, embFile)
+         else listOf(melFile, embFile, wakeFile)
++    private val apkUpdateTime = appContext.packageManager
++        .getPackageInfo(appContext.packageName, 0).lastUpdateTime
++
++    private class BundledModel(val asset: String, val file: File)
+ 
+     private val audio = FloatArray(OwwModel.MEL_INPUT_COUNT)
+     private var model: OwwModel? = null
+@@ -45,29 +48,43 @@ class OpenWakeWordDevice(
+     private val scope = CoroutineScope(Dispatchers.IO)
+ 
+     init {
+-        _state = if (allModelFiles.any(FileToDownload::needsToBeDownloaded)) {
+-            MutableStateFlow(WakeState.NotDownloaded)
+-        } else {
++        // The bundled models are a few MB, so copying them here is quick, and it lets the
++        // boot receiver start listening right away.
++        _state = try {
++            copyBundledModels()
+             MutableStateFlow(WakeState.NotLoaded)
++        } catch (e: IOException) {
++            Log.e(TAG, "Can't copy the bundled OpenWakeWord models", e)
++            MutableStateFlow(WakeState.NotDownloaded)
+         }
+         state = _state
+     }
+ 
++    private fun copyBundledModels() {
++        owwFolder.mkdirs()
++        for (model in allModelFiles) {
++            // Copy again after an APK update, which may bring a retrained model.
++            if (model.file.exists() && model.file.lastModified() >= apkUpdateTime) {
++                continue
++            }
++            val partialFile = File(owwFolder, model.file.name + ".part")
++            appContext.assets.open("openWakeWord/" + model.asset).use { source ->
++                partialFile.outputStream().use { source.copyTo(it) }
++            }
++            if (!partialFile.renameTo(model.file)) {
++                throw IOException("Cannot rename partial file $partialFile to ${model.file}")
++            }
++        }
++    }
++
+     override fun download() {
+         _state.value = WakeState.Downloading(Progress.UNKNOWN)
+ 
+         scope.launch {
+             try {
+-                owwFolder.mkdirs()
+-                downloadBinaryFilesWithPartial(
+-                    urlsFiles = allModelFiles,
+-                    httpClient = okHttpClient,
+-                    cacheDir = cacheDir,
+-                ) { progress ->
+-                    _state.value = WakeState.Downloading(progress)
+-                }
++                copyBundledModels()
+             } catch (e: Throwable) {
+-                Log.e(TAG, "Can't download OpenWakeWord model", e)
++                Log.e(TAG, "Can't copy the bundled OpenWakeWord models", e)
+                 _state.value = WakeState.ErrorDownloading(e)
+                 return@launch
+             }
+@@ -126,9 +143,6 @@ class OpenWakeWordDevice(
+ 
+     companion object {
+         val TAG = OpenWakeWordDevice::class.simpleName
+-        const val MEL_URL = "https://github.com/dscripka/openWakeWord/releases/download/v0.5.1/melspectrogram.tflite"
+-        const val EMB_URL = "https://github.com/dscripka/openWakeWord/releases/download/v0.5.1/embedding_model.tflite"
+-        const val WAKE_URL = "https://github.com/Stypox/dicio-android/releases/download/v2.0/hey_dicio_v6.0.tflite"
+ 
+         private fun userWakeFile(context: Context) =
+             File(context.filesDir, "openWakeWord/userwake.tflite")
+diff --git a/app/src/main/res/values/strings.xml b/app/src/main/res/values/strings.xml
+index b5e8c88..504dbd3 100644
+--- a/app/src/main/res/values/strings.xml
++++ b/app/src/main/res/values/strings.xml
+@@ -90,13 +90,13 @@
+     <string name="pref_speech_output_method_snackbar">Snackbar (message at the bottom)</string>
+     <string name="pref_speech_output_method_nothing">Nothing</string>
+     <string name="pref_wake_method">Wake word recognition method</string>
+-    <string name="pref_wake_method_summary">Choose the service to use to listen for the \"Hey Dicio\" wakeup word in the background</string>
++    <string name="pref_wake_method_summary">Choose the service to use to listen for the \"Hey Raven\" wakeup word in the background</string>
+     <string name="pref_wake_method_disabled">Disabled</string>
+     <string name="pref_wake_method_openwakeword">OpenWakeWord offline audio processing</string>
+     <string name="pref_wake_custom_delete">Delete custom wake word</string>
+-    <string name="pref_wake_custom_delete_summary">Return to default \"Hey Dicio\" wake word</string>
++    <string name="pref_wake_custom_delete_summary">Return to default \"Hey Raven\" wake word</string>
+     <string name="pref_wake_custom_import">Import custom wake word</string>
+-    <string name="pref_wake_custom_import_summary_oww">Replace the default \"Hey Dicio\" wake word with a custom TFLite model; you can download some custom models from github.com/dscripka/openWakeWord/releases</string>
++    <string name="pref_wake_custom_import_summary_oww">Replace the default \"Hey Raven\" wake word with a custom TFLite model; you can download some custom models from github.com/dscripka/openWakeWord/releases</string>
+     <string name="pref_skill_not_available">This skill is not yet available for your language. Contributions are welcome!</string>
+     <string name="pref_skill_missing_permissions">Requires these permissions: %1$s</string>
+     <string name="pref_skill_grant_permissions">Grant</string>
+@@ -199,14 +199,14 @@
+     <string name="wake_service_label">Dicio wake word service</string>
+     <string name="wake_service_foreground_notification_summary">This notification allows the Dicio
+         wake word service to listen to the microphone in the background</string>
+-    <string name="wake_service_foreground_notification">Listening for the \"Hey Dicio\" wake-up word</string>
++    <string name="wake_service_foreground_notification">Listening for the \"Hey Raven\" wake-up word</string>
+     <string name="wake_custom_service_foreground_notification">Listening for custom wake-up word</string>
+     <string name="wake_service_start_notification">Tap to start Dicio wake word service</string>
+     <string name="wake_service_triggered_notification">Dicio wake word triggered, tap to open</string>
+     <string name="wake_service_start_notification_summary">In Android 11+ Dicio can\'t start the service without a manual interaction from the user.</string>
+     <string name="wake_service_triggered_notification_summary">In Android 10+ Dicio can\'t start when a wake word is detected without showing a notification.</string>
+     <string name="wake_word_setup_title">Setup wake word</string>
+-    <string name="wake_word_setup_description">Dicio will wake up automatically whenever you say \"Hey Dicio\".
++    <string name="wake_word_setup_description">Dicio will wake up automatically whenever you say \"Hey Raven\".
+         This works by starting a service that always listens in the background.
+         All speech processing happens locally, that\'s why you need to download the AI model in advance.</string>
+     <string name="wake_word_error_downloading">An unexpected error occurred while downloading</string>
+-- 
+2.53.0
+

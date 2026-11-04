@@ -1,0 +1,77 @@
+From bde37da4d63e37f0c6629a3e731e08a0420c3ab3 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 20:35:55 -0700
+Subject: [PATCH 2/5] RavenOS: Open directly on the wake word as a system app
+
+When Dicio holds START_ACTIVITIES_FROM_BACKGROUND (granted to it as a
+privileged app on RavenOS), open the assistant as soon as the wake word
+is heard instead of posting a notification, and start the microphone
+service at boot instead of asking for a tap first.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../stypox/dicio/io/wake/BootBroadcastReceiver.kt   |  4 +++-
+ .../kotlin/org/stypox/dicio/io/wake/SystemApp.kt    | 13 +++++++++++++
+ .../kotlin/org/stypox/dicio/io/wake/WakeService.kt  |  6 ++++--
+ 3 files changed, 20 insertions(+), 3 deletions(-)
+ create mode 100644 app/src/main/kotlin/org/stypox/dicio/io/wake/SystemApp.kt
+
+diff --git a/app/src/main/kotlin/org/stypox/dicio/io/wake/BootBroadcastReceiver.kt b/app/src/main/kotlin/org/stypox/dicio/io/wake/BootBroadcastReceiver.kt
+index c4f3e56..ff11016 100644
+--- a/app/src/main/kotlin/org/stypox/dicio/io/wake/BootBroadcastReceiver.kt
++++ b/app/src/main/kotlin/org/stypox/dicio/io/wake/BootBroadcastReceiver.kt
+@@ -32,11 +32,13 @@ class BootBroadcastReceiver : BroadcastReceiver() {
+                 // any of these three states indicates that wake word recognition is enabled, and
+                 // that the model has already been downloaded
+ 
+-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
++                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
++                    !canStartFromBackground(context)) {
+                     // Starting from Android 11, it is not possible to start a foreground service
+                     // that accesses the microphone from a BOOT_COMPLETED broadcast. So we show a
+                     // notification instead, which starts the foreground service when clicked.
+                     // https://developer.android.com/about/versions/15/behavior-changes-15#fgs-boot-completed
++                    // System apps holding START_ACTIVITIES_FROM_BACKGROUND are exempt.
+                     Log.d(TAG, "Creating notification")
+                     WakeService.createNotificationToStartLater(context)
+                 } else {
+diff --git a/app/src/main/kotlin/org/stypox/dicio/io/wake/SystemApp.kt b/app/src/main/kotlin/org/stypox/dicio/io/wake/SystemApp.kt
+new file mode 100644
+index 0000000..e84efbb
+--- /dev/null
++++ b/app/src/main/kotlin/org/stypox/dicio/io/wake/SystemApp.kt
+@@ -0,0 +1,13 @@
++package org.stypox.dicio.io.wake
++
++import android.content.Context
++import android.content.pm.PackageManager
++
++/**
++ * RavenOS installs Dicio as a privileged system app holding START_ACTIVITIES_FROM_BACKGROUND.
++ * That lets it open the assistant when the wake word is heard, and start the microphone
++ * service at boot, instead of asking the user to tap a notification first.
++ */
++fun canStartFromBackground(context: Context): Boolean =
++    context.checkSelfPermission("android.permission.START_ACTIVITIES_FROM_BACKGROUND") ==
++        PackageManager.PERMISSION_GRANTED
+diff --git a/app/src/main/kotlin/org/stypox/dicio/io/wake/WakeService.kt b/app/src/main/kotlin/org/stypox/dicio/io/wake/WakeService.kt
+index 81e1213..8569ea9 100644
+--- a/app/src/main/kotlin/org/stypox/dicio/io/wake/WakeService.kt
++++ b/app/src/main/kotlin/org/stypox/dicio/io/wake/WakeService.kt
+@@ -236,9 +236,11 @@ class WakeService : Service() {
+         handler.removeCallbacks(releaseSttResourcesRunnable)
+         handler.postDelayed(releaseSttResourcesRunnable, RELEASE_STT_RESOURCES_MILLIS)
+ 
+-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || MainActivity.isInForeground > 0) {
++        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || MainActivity.isInForeground > 0 ||
++            canStartFromBackground(this)) {
+             // start the activity directly on versions prior to Android 10,
+-            // or if the MainActivity is already running in the foreground
++            // or if the MainActivity is already running in the foreground,
++            // or if we are a system app that may start activities from the background
+             startActivity(intent)
+ 
+         } else {
+-- 
+2.53.0
+

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ring around a round button while the remote's D-pad has it focused. Only shows
+     after a key press; touch never focuses these views. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_focused="true">
+        <shape android:shape="oval">
+            <stroke android:width="3dp" android:color="@color/raven_focus" />
+        </shape>
+    </item>
+</selector>

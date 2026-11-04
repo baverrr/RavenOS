@@ -1,0 +1,452 @@
+From 678db547b56c6f776257887d86810096fe8945fe Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 20:15:27 -0700
+Subject: [PATCH] EchoParts: Use the glass Settings theme
+
+Show the Microphone processing, Bluetooth audio and Camera shutter
+pages like the RavenOS glass Settings: a soft gradient backdrop with
+transparent bars, each preference group drawn as one rounded glass card
+with hairline separators in a centred column (GlassListView), quiet
+section headings, and dialogs on a solid surface.
+
+Every color comes from res/values/settings_glass.xml, so a product
+overlay can recolor the pages to match the device's Settings theme.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ EchoParts/AndroidManifest.xml                 |   6 +-
+ EchoParts/res/drawable/settings_backdrop.xml  |  29 ++++
+ EchoParts/res/layout/settings_category.xml    |  14 ++
+ EchoParts/res/layout/settings_list.xml        |  10 ++
+ EchoParts/res/values/settings_glass.xml       |  24 +++
+ EchoParts/res/values/styles.xml               |  39 +++++
+ .../echoparts/BluetoothAudioFragment.java     |   3 +-
+ .../echoparts/CameraShutterFragment.java      |   3 +-
+ .../lineageos/echoparts/GlassListView.java    | 149 ++++++++++++++++++
+ .../echoparts/GlassPreferenceFragment.java    |  29 ++++
+ .../echoparts/MicProcessingFragment.java      |   3 +-
+ 11 files changed, 300 insertions(+), 9 deletions(-)
+ create mode 100644 EchoParts/res/drawable/settings_backdrop.xml
+ create mode 100644 EchoParts/res/layout/settings_category.xml
+ create mode 100644 EchoParts/res/layout/settings_list.xml
+ create mode 100644 EchoParts/res/values/settings_glass.xml
+ create mode 100644 EchoParts/res/values/styles.xml
+ create mode 100644 EchoParts/src/org/lineageos/echoparts/GlassListView.java
+ create mode 100644 EchoParts/src/org/lineageos/echoparts/GlassPreferenceFragment.java
+
+diff --git a/EchoParts/AndroidManifest.xml b/EchoParts/AndroidManifest.xml
+index 71a48d5..d589d64 100644
+--- a/EchoParts/AndroidManifest.xml
++++ b/EchoParts/AndroidManifest.xml
+@@ -28,7 +28,7 @@
+         <activity
+             android:name=".BluetoothAudioActivity"
+             android:label="@string/bluetooth_audio_title"
+-            android:theme="@android:style/Theme.DeviceDefault.Settings">
++            android:theme="@style/EchoPartsSettings">
+ 
+             <intent-filter>
+                 <action android:name="com.android.settings.action.IA_SETTINGS" />
+@@ -51,7 +51,7 @@
+         <activity
+             android:name=".CameraShutterActivity"
+             android:label="@string/camera_shutter_title"
+-            android:theme="@android:style/Theme.DeviceDefault.Settings">
++            android:theme="@style/EchoPartsSettings">
+ 
+             <intent-filter>
+                 <action android:name="com.android.settings.action.IA_SETTINGS" />
+@@ -68,7 +68,7 @@
+         <activity
+             android:name=".MicProcessingActivity"
+             android:label="@string/mic_processing_title"
+-            android:theme="@android:style/Theme.DeviceDefault.Settings">
++            android:theme="@style/EchoPartsSettings">
+ 
+             <intent-filter>
+                 <action android:name="com.android.settings.action.IA_SETTINGS" />
+diff --git a/EchoParts/res/drawable/settings_backdrop.xml b/EchoParts/res/drawable/settings_backdrop.xml
+new file mode 100644
+index 0000000..eb6481c
+--- /dev/null
++++ b/EchoParts/res/drawable/settings_backdrop.xml
+@@ -0,0 +1,29 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Backdrop behind the EchoParts pages, the same glows as Android Settings so the
++     page reads as part of it. Colors come from settings_glass.xml (the glass theme). -->
++<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
++    <item>
++        <color android:color="@color/settings_bg" />
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.15" android:centerY="0.9"
++                android:gradientRadius="80%p"
++                android:startColor="@color/settings_glow_1" android:endColor="#00000000" />
++        </shape>
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.8" android:centerY="0.15"
++                android:gradientRadius="75%p"
++                android:startColor="@color/settings_glow_2" android:endColor="#00000000" />
++        </shape>
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.55" android:centerY="0.55"
++                android:gradientRadius="55%p"
++                android:startColor="@color/settings_glow_3" android:endColor="#00000000" />
++        </shape>
++    </item>
++</layer-list>
+diff --git a/EchoParts/res/layout/settings_category.xml b/EchoParts/res/layout/settings_category.xml
+new file mode 100644
+index 0000000..361be5d
+--- /dev/null
++++ b/EchoParts/res/layout/settings_category.xml
+@@ -0,0 +1,14 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Section heading above a card: small, spaced capitals, aligned with the row titles. -->
++<TextView xmlns:android="http://schemas.android.com/apk/res/android"
++    android:id="@android:id/title"
++    android:layout_width="match_parent"
++    android:layout_height="wrap_content"
++    android:paddingStart="?android:attr/listPreferredItemPaddingStart"
++    android:paddingEnd="?android:attr/listPreferredItemPaddingEnd"
++    android:paddingTop="20dp"
++    android:paddingBottom="8dp"
++    android:textAllCaps="true"
++    android:textSize="11sp"
++    android:letterSpacing="0.0727"
++    android:textColor="@color/settings_fg_3" />
+diff --git a/EchoParts/res/layout/settings_list.xml b/EchoParts/res/layout/settings_list.xml
+new file mode 100644
+index 0000000..ac78629
+--- /dev/null
++++ b/EchoParts/res/layout/settings_list.xml
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- The preference list of the EchoParts pages, drawn as glass cards. -->
++<org.lineageos.echoparts.GlassListView xmlns:android="http://schemas.android.com/apk/res/android"
++    android:id="@android:id/list"
++    android:layout_width="match_parent"
++    android:layout_height="match_parent"
++    android:paddingTop="8dp"
++    android:paddingBottom="24dp"
++    android:clipToPadding="false"
++    android:scrollbarStyle="outsideOverlay" />
+diff --git a/EchoParts/res/values/settings_glass.xml b/EchoParts/res/values/settings_glass.xml
+new file mode 100644
+index 0000000..2c3dde9
+--- /dev/null
++++ b/EchoParts/res/values/settings_glass.xml
+@@ -0,0 +1,24 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Generated by vendor/ravenos/themes/generate.py (Midnight Aurora). Edit the palette there. -->
++<resources>
++    <color name="settings_bg">#FF070B1D</color>
++    <color name="settings_glow_1">#CC0D9488</color>
++    <color name="settings_glow_2">#AA7C3AED</color>
++    <color name="settings_glow_3">#881E3A8A</color>
++    <color name="settings_fg">#FFF0F9FF</color>
++    <color name="settings_fg_2">#FFBAE6FD</color>
++    <color name="settings_fg_3">#FF7FA3C4</color>
++    <color name="settings_card">#12FFFFFF</color>
++    <color name="settings_card_stroke">#29BAE6FD</color>
++    <color name="settings_separator">#1ABAE6FD</color>
++    <color name="settings_ripple">#1FFFFFFF</color>
++    <color name="settings_accent">#FF22D3EE</color>
++    <color name="settings_surface">#FF141B33</color>
++    <color name="settings_on_accent">#FF04212A</color>
++    <color name="settings_home_glass">#B8141B33</color>
++    <dimen name="settings_card_radius">20dp</dimen>
++</resources>
+diff --git a/EchoParts/res/values/styles.xml b/EchoParts/res/values/styles.xml
+new file mode 100644
+index 0000000..8201d8f
+--- /dev/null
++++ b/EchoParts/res/values/styles.xml
+@@ -0,0 +1,39 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 The LineageOS Project
++     SPDX-License-Identifier: Apache-2.0
++-->
++<resources>
++    <!-- Same glass look as Android Settings. Colors come from settings_glass.xml, which a
++         product overlay can replace to match the device's Settings theme. -->
++    <style name="EchoPartsSettings" parent="@android:style/Theme.DeviceDefault.Settings">
++        <item name="android:windowBackground">@drawable/settings_backdrop</item>
++        <item name="android:colorBackground">@color/settings_bg</item>
++        <item name="android:statusBarColor">@android:color/transparent</item>
++        <item name="android:navigationBarColor">@android:color/transparent</item>
++        <item name="android:actionBarStyle">@style/EchoPartsSettings.ActionBar</item>
++        <item name="android:colorAccent">@color/settings_accent</item>
++        <item name="android:colorControlActivated">@color/settings_accent</item>
++        <item name="android:textColorPrimary">@color/settings_fg</item>
++        <item name="android:textColorSecondary">@color/settings_fg_2</item>
++        <item name="android:preferenceCategoryStyle">@style/EchoPartsSettings.Category</item>
++        <item name="android:alertDialogTheme">@style/EchoPartsSettingsDialog</item>
++    </style>
++
++    <style name="EchoPartsSettings.ActionBar" parent="@android:style/Widget.DeviceDefault.ActionBar.Solid">
++        <item name="android:background">@android:color/transparent</item>
++        <item name="android:elevation">0dp</item>
++    </style>
++
++    <style name="EchoPartsSettings.Category" parent="@*android:style/Preference.Material.Category">
++        <item name="android:layout">@layout/settings_category</item>
++    </style>
++
++    <!-- Dialogs stay on a solid surface: Android 11 can't blur behind them. -->
++    <style name="EchoPartsSettingsDialog" parent="@android:style/Theme.DeviceDefault.Dialog.Alert">
++        <item name="android:colorAccent">@color/settings_accent</item>
++        <item name="android:colorBackground">@color/settings_surface</item>
++        <item name="android:textColorPrimary">@color/settings_fg</item>
++        <item name="android:textColorSecondary">@color/settings_fg_2</item>
++    </style>
++</resources>
+diff --git a/EchoParts/src/org/lineageos/echoparts/BluetoothAudioFragment.java b/EchoParts/src/org/lineageos/echoparts/BluetoothAudioFragment.java
+index 0b16615..f5777f4 100644
+--- a/EchoParts/src/org/lineageos/echoparts/BluetoothAudioFragment.java
++++ b/EchoParts/src/org/lineageos/echoparts/BluetoothAudioFragment.java
+@@ -8,9 +8,8 @@ package org.lineageos.echoparts;
+ import android.os.Bundle;
+ import android.preference.ListPreference;
+ import android.preference.Preference;
+-import android.preference.PreferenceFragment;
+ 
+-public class BluetoothAudioFragment extends PreferenceFragment
++public class BluetoothAudioFragment extends GlassPreferenceFragment
+         implements Preference.OnPreferenceChangeListener {
+ 
+     private static final String KEY_MODE = "bluetooth_audio_mode";
+diff --git a/EchoParts/src/org/lineageos/echoparts/CameraShutterFragment.java b/EchoParts/src/org/lineageos/echoparts/CameraShutterFragment.java
+index 876f399..9793cc6 100644
+--- a/EchoParts/src/org/lineageos/echoparts/CameraShutterFragment.java
++++ b/EchoParts/src/org/lineageos/echoparts/CameraShutterFragment.java
+@@ -8,10 +8,9 @@ package org.lineageos.echoparts;
+ import android.os.Bundle;
+ import android.os.SystemProperties;
+ import android.preference.Preference;
+-import android.preference.PreferenceFragment;
+ import android.preference.SwitchPreference;
+ 
+-public class CameraShutterFragment extends PreferenceFragment
++public class CameraShutterFragment extends GlassPreferenceFragment
+         implements Preference.OnPreferenceChangeListener {
+ 
+     private static final String KEY_LAUNCH = "camera_shutter_launch";
+diff --git a/EchoParts/src/org/lineageos/echoparts/GlassListView.java b/EchoParts/src/org/lineageos/echoparts/GlassListView.java
+new file mode 100644
+index 0000000..982d525
+--- /dev/null
++++ b/EchoParts/src/org/lineageos/echoparts/GlassListView.java
+@@ -0,0 +1,149 @@
++/*
++ * SPDX-FileCopyrightText: 2026 The LineageOS Project
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package org.lineageos.echoparts;
++
++import android.content.Context;
++import android.content.res.ColorStateList;
++import android.content.res.Resources;
++import android.graphics.Canvas;
++import android.graphics.Paint;
++import android.graphics.RectF;
++import android.graphics.drawable.ColorDrawable;
++import android.graphics.drawable.RippleDrawable;
++import android.preference.Preference;
++import android.preference.PreferenceCategory;
++import android.util.AttributeSet;
++import android.view.View;
++import android.widget.ListAdapter;
++import android.widget.ListView;
++
++/**
++ * Preference list for the EchoParts pages in the glass style of Android Settings: each run of
++ * preferences between category headers is one rounded glass card with hairline separators
++ * inset to the title, in a centred column no wider than MAX_WIDTH_DP. The same look as
++ * GlassGroupDecoration in Settings, for the framework (ListView) preference list.
++ */
++public class GlassListView extends ListView {
++    private static final int MAX_WIDTH_DP = 760;
++    private static final int MIN_SIDE_DP = 24;
++
++    private final Paint mFillPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
++    private final Paint mStrokePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
++    private final Paint mSeparatorPaint = new Paint();
++    private final RectF mRun = new RectF();
++    private final float mRadius;
++    private final float mStrokeWidth;
++
++    public GlassListView(Context context, AttributeSet attrs) {
++        super(context, attrs);
++        Resources res = context.getResources();
++        mRadius = res.getDimension(R.dimen.settings_card_radius);
++        mStrokeWidth = res.getDisplayMetrics().density;
++        mFillPaint.setColor(context.getColor(R.color.settings_card));
++        mStrokePaint.setColor(context.getColor(R.color.settings_card_stroke));
++        mStrokePaint.setStyle(Paint.Style.STROKE);
++        mStrokePaint.setStrokeWidth(mStrokeWidth);
++        mSeparatorPaint.setColor(context.getColor(R.color.settings_separator));
++
++        setDivider(null);
++        setDividerHeight(0);
++        setCacheColorHint(0);
++        setBackground(null);
++        // Row touch feedback stays inside the row; the card is drawn underneath.
++        setSelector(new RippleDrawable(
++                ColorStateList.valueOf(context.getColor(R.color.settings_ripple)),
++                null, new ColorDrawable(0xFFFFFFFF)));
++        setDrawSelectorOnTop(false);
++    }
++
++    @Override
++    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
++        super.onSizeChanged(w, h, oldw, oldh);
++        float density = getResources().getDisplayMetrics().density;
++        int side = Math.max((int) (MIN_SIDE_DP * density),
++                (w - (int) (MAX_WIDTH_DP * density)) / 2);
++        if (side != getPaddingLeft()) {
++            post(() -> setPadding(side, getPaddingTop(), side, getPaddingBottom()));
++        }
++    }
++
++    @Override
++    protected void dispatchDraw(Canvas canvas) {
++        drawCards(canvas);
++        super.dispatchDraw(canvas);
++    }
++
++    private void drawCards(Canvas canvas) {
++        boolean inRun = false;
++        int first = getFirstVisiblePosition();
++        int count = getChildCount();
++        for (int i = 0; i < count; i++) {
++            View child = getChildAt(i);
++            int position = first + i;
++            if (!isCard(position)) {
++                if (inRun) {
++                    // The rest of this group is not laid out yet; leave its bottom open.
++                    drawRun(canvas, false);
++                    inRun = false;
++                }
++                continue;
++            }
++            float top = child.getTop();
++            float bottom = child.getBottom();
++            boolean startsGroup = !isCard(position - 1);
++            if (!inRun) {
++                // A group whose first rows have scrolled away keeps its top edge off-screen.
++                mRun.set(child.getLeft(), startsGroup ? top : top - 2 * mRadius,
++                        child.getRight(), bottom);
++                inRun = true;
++            } else {
++                mRun.bottom = bottom;
++                drawSeparator(canvas, child, top);
++            }
++            if (!isCard(position + 1)) {
++                drawRun(canvas, true);
++                inRun = false;
++            }
++        }
++        if (inRun) {
++            drawRun(canvas, false);
++        }
++    }
++
++    private void drawRun(Canvas canvas, boolean closed) {
++        if (!closed) {
++            mRun.bottom += 2 * mRadius;
++        }
++        canvas.drawRoundRect(mRun, mRadius, mRadius, mFillPaint);
++        float half = mStrokeWidth / 2;
++        canvas.drawRoundRect(mRun.left + half, mRun.top + half, mRun.right - half,
++                mRun.bottom - half, mRadius, mRadius, mStrokePaint);
++    }
++
++    private void drawSeparator(Canvas canvas, View child, float y) {
++        float start = child.getLeft();
++        View title = child.findViewById(android.R.id.title);
++        if (title != null && title.getVisibility() == View.VISIBLE) {
++            int left = 0;
++            for (View v = title; v != child && v != null; v = (View) v.getParent()) {
++                left += v.getLeft();
++            }
++            start += left;
++        } else {
++            start += mRadius;
++        }
++        canvas.drawRect(start, y, child.getRight(), y + mStrokeWidth, mSeparatorPaint);
++    }
++
++    private boolean isCard(int position) {
++        ListAdapter adapter = getAdapter();
++        if (adapter == null || position < 0 || position >= adapter.getCount()) {
++            return false;
++        }
++        Object item = adapter.getItem(position);
++        return item instanceof Preference && !(item instanceof PreferenceCategory);
++    }
++}
+diff --git a/EchoParts/src/org/lineageos/echoparts/GlassPreferenceFragment.java b/EchoParts/src/org/lineageos/echoparts/GlassPreferenceFragment.java
+new file mode 100644
+index 0000000..9c0ee40
+--- /dev/null
++++ b/EchoParts/src/org/lineageos/echoparts/GlassPreferenceFragment.java
+@@ -0,0 +1,29 @@
++/*
++ * SPDX-FileCopyrightText: 2026 The LineageOS Project
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package org.lineageos.echoparts;
++
++import android.os.Bundle;
++import android.preference.PreferenceFragment;
++import android.view.LayoutInflater;
++import android.view.View;
++import android.view.ViewGroup;
++
++/** PreferenceFragment that shows its list as glass cards (see GlassListView). */
++public abstract class GlassPreferenceFragment extends PreferenceFragment {
++
++    @Override
++    public View onCreateView(LayoutInflater inflater, ViewGroup container,
++            Bundle savedInstanceState) {
++        return inflater.inflate(R.layout.settings_list, container, false);
++    }
++
++    @Override
++    public void onViewCreated(View view, Bundle savedInstanceState) {
++        super.onViewCreated(view, savedInstanceState);
++        // The fragment applies the theme's list divider; the glass cards draw their own.
++        ((GlassListView) view.findViewById(android.R.id.list)).setDivider(null);
++    }
++}
+diff --git a/EchoParts/src/org/lineageos/echoparts/MicProcessingFragment.java b/EchoParts/src/org/lineageos/echoparts/MicProcessingFragment.java
+index 0ad318f..62d0fb8 100644
+--- a/EchoParts/src/org/lineageos/echoparts/MicProcessingFragment.java
++++ b/EchoParts/src/org/lineageos/echoparts/MicProcessingFragment.java
+@@ -8,9 +8,8 @@ package org.lineageos.echoparts;
+ import android.os.Bundle;
+ import android.preference.ListPreference;
+ import android.preference.Preference;
+-import android.preference.PreferenceFragment;
+ 
+-public class MicProcessingFragment extends PreferenceFragment
++public class MicProcessingFragment extends GlassPreferenceFragment
+         implements Preference.OnPreferenceChangeListener {
+ 
+     private static final String KEY_MODE = "mic_processing_mode";
+-- 
+2.53.0
+

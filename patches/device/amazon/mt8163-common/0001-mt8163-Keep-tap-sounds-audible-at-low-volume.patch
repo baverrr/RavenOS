@@ -1,0 +1,39 @@
+From 4099a23c2948abb544ac9b052504ce1961ddf4d9 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 15:34:42 -0700
+Subject: [PATCH] mt8163: Keep tap sounds audible at low volume
+
+Tap and remote-button sounds follow media volume. On the speaker
+they now use a flatter curve than media, so they still get quieter
+with the volume but no longer vanish at the low volumes the Echo is
+usually left at.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ configs/audio/audio_policy_volumes.xml | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/configs/audio/audio_policy_volumes.xml b/configs/audio/audio_policy_volumes.xml
+index 163325b..6f52060 100644
+--- a/configs/audio/audio_policy_volumes.xml
++++ b/configs/audio/audio_policy_volumes.xml
+@@ -39,7 +39,15 @@ volume index from 0 to 100.
+ 
+ 
+     <volume stream="AUDIO_STREAM_VOICE_CALL" deviceCategory="DEVICE_CATEGORY_SPEAKER" ref="DEFAULT_DEVICE_CATEGORY_SPEAKER_VOLUME_CURVE"/>
+-    <volume stream="AUDIO_STREAM_SYSTEM" deviceCategory="DEVICE_CATEGORY_SPEAKER" ref="DEFAULT_DEVICE_CATEGORY_SPEAKER_VOLUME_CURVE"/>
++    <!-- Tap and remote-button sounds follow media volume, so on the speaker they get a
++         flatter curve than media: still quieter as the volume goes down, but audible at
++         the low volumes the Echo is usually left at. -->
++    <volume stream="AUDIO_STREAM_SYSTEM" deviceCategory="DEVICE_CATEGORY_SPEAKER">
++        <point>1,-3000</point>
++        <point>33,-1800</point>
++        <point>66,-800</point>
++        <point>100,0</point>
++    </volume>
+     <volume stream="AUDIO_STREAM_RING" deviceCategory="DEVICE_CATEGORY_SPEAKER" ref="DEFAULT_DEVICE_CATEGORY_SPEAKER_VOLUME_CURVE"/>
+     <volume stream="AUDIO_STREAM_MUSIC" deviceCategory="DEVICE_CATEGORY_SPEAKER" ref="DEFAULT_DEVICE_CATEGORY_SPEAKER_VOLUME_CURVE"/>
+     <volume stream="AUDIO_STREAM_ALARM" deviceCategory="DEVICE_CATEGORY_SPEAKER" ref="DEFAULT_DEVICE_CATEGORY_SPEAKER_VOLUME_CURVE"/>
+-- 
+2.53.0
+

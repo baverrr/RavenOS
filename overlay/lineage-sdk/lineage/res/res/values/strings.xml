@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="lineage_version">RavenOS 1.1 · LineageOS base</string>
+    <string name="lineage_updates">RavenOS updates</string>
+</resources>

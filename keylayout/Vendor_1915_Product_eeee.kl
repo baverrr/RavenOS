@@ -1,0 +1,26 @@
+# SPDX-FileCopyrightText: 2026 RavenOS
+# SPDX-License-Identifier: Apache-2.0
+#
+# Facebook Portal TV remote ("PortalTV Remot", Bluetooth, vendor 0x1915, product 0xeeee).
+# The same as Generic.kl for these buttons, except Search, which toggles mute.
+# Red, Green and Blue do nothing until given an action in Settings › Remote buttons.
+
+key 103   DPAD_UP
+key 108   DPAD_DOWN
+key 105   DPAD_LEFT
+key 106   DPAD_RIGHT
+key 353   DPAD_CENTER
+key 158   BACK
+key 172   HOME
+key 115   VOLUME_UP
+key 114   VOLUME_DOWN
+key 164   MEDIA_PLAY_PAUSE
+key 152   POWER
+
+# Search (the mic button): mute on/off.
+key 217   VOLUME_MUTE
+
+# Red, Green and Blue: no action of their own; Settings › Remote buttons can give them one.
+key 398   PROG_RED
+key 399   PROG_GREEN
+key 401   PROG_BLUE

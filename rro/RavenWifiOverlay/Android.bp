@@ -1,0 +1,6 @@
+// RavenOS Wi-Fi settings, on top of the crown device's WifiResOverlayCrown.
+runtime_resource_overlay {
+    name: "RavenWifiOverlay",
+    resource_dirs: ["res"],
+    vendor: true,
+}

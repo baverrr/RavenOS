@@ -1,0 +1,387 @@
+From 6cf36e9e0775968b018155b302b077aedeed7cf2 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 23:33:57 -0700
+Subject: [PATCH] LatinIME: Let the glass keyboard's backdrop glow follow
+ touches
+
+On the RavenOS Glass theme, wrap the keyboard background in a copy of
+Settings' GlowBackdrop and feed it the keyboard's touches, so a soft
+glow in raven_touch_glow follows the finger behind the keys and fades
+after it lifts. Variants turn it off by making the color transparent.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I3b4b51c8cfdcaef9d920f029329c7d987fa514b9
+---
+ java/res/values/raven_glass.xml               |   4 +
+ .../inputmethod/keyboard/GlowBackdrop.java    | 307 ++++++++++++++++++
+ .../keyboard/MainKeyboardView.java            |  13 +
+ 3 files changed, 324 insertions(+)
+ create mode 100644 java/src/com/android/inputmethod/keyboard/GlowBackdrop.java
+
+diff --git a/java/res/values/raven_glass.xml b/java/res/values/raven_glass.xml
+index 59c2e07..38a55dd 100644
+--- a/java/res/values/raven_glass.xml
++++ b/java/res/values/raven_glass.xml
+@@ -30,4 +30,8 @@
+ 
+     <dimen name="raven_key_radius">8dp</dimen>
+     <dimen name="raven_key_gap">2dp</dimen>
++
++    <!-- The backdrop glow that follows a finger while the screen is touched; transparent turns
++         it off. Variants override it with touch_glow.xml. -->
++    <color name="raven_touch_glow">#8814B8A6</color>
+ </resources>
+diff --git a/java/src/com/android/inputmethod/keyboard/GlowBackdrop.java b/java/src/com/android/inputmethod/keyboard/GlowBackdrop.java
+new file mode 100644
+index 0000000..5b898a3
+--- /dev/null
++++ b/java/src/com/android/inputmethod/keyboard/GlowBackdrop.java
+@@ -0,0 +1,307 @@
++/*
++ * SPDX-FileCopyrightText: 2026 RavenOS
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package com.android.inputmethod.keyboard;
++
++import android.animation.TimeAnimator;
++import android.app.Activity;
++import android.graphics.Canvas;
++import android.graphics.ColorFilter;
++import android.graphics.Paint;
++import android.graphics.PixelFormat;
++import android.graphics.RadialGradient;
++import android.graphics.Rect;
++import android.graphics.Shader;
++import android.graphics.drawable.Drawable;
++import android.util.TypedValue;
++import android.view.ActionMode;
++import android.view.KeyEvent;
++import android.view.KeyboardShortcutGroup;
++import android.view.Menu;
++import android.view.MenuItem;
++import android.view.MotionEvent;
++import android.view.SearchEvent;
++import android.view.View;
++import android.view.Window;
++import android.view.WindowManager;
++import android.view.accessibility.AccessibilityEvent;
++
++import com.android.inputmethod.latin.R;
++
++import java.util.List;
++
++/**
++ * The RavenOS glass backdrop with a glow that follows the finger: while the screen is touched,
++ * a soft glow in the theme's raven_touch_glow color eases toward the touch point, and it fades
++ * out after the finger lifts. It draws behind all content and never consumes touches.
++ *
++ * <p>The keyboard wraps its own background in it (see MainKeyboardView). Copied from Settings'
++ * GlowBackdrop with only the package, R import and backdrop name changed; keep them in step.
++ */
++public class GlowBackdrop extends Drawable implements TimeAnimator.TimeListener {
++
++    /** How quickly the glow catches up with the finger. */
++    private static final float FOLLOW_MILLIS = 120f;
++    private static final float FADE_IN_MILLIS = 150f;
++    private static final float FADE_OUT_MILLIS = 600f;
++    /** Glow radius as a fraction of the shorter screen side. */
++    private static final float RADIUS_FRACTION = 0.45f;
++
++    private final Drawable mBase;
++    private final int mColor;
++    private final Paint mPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.DITHER_FLAG);
++    private final TimeAnimator mAnimator = new TimeAnimator();
++
++    private float mX = Float.NaN;
++    private float mY;
++    private float mTargetX;
++    private float mTargetY;
++    private float mStrength;
++    private boolean mTouching;
++
++    public GlowBackdrop(Drawable base, int color) {
++        mBase = base;
++        mColor = color;
++        mAnimator.setTimeListener(this);
++    }
++
++    /**
++     * Gives the activity's glass backdrop a glow that follows touches. Does nothing when the
++     * window doesn't use the glass backdrop (e.g. setup wizard pages) or the variant has turned
++     * the glow off.
++     */
++    public static void attach(Activity activity) {
++        final TypedValue background = new TypedValue();
++        if (!activity.getTheme().resolveAttribute(android.R.attr.windowBackground, background,
++                true) || background.resourceId != R.drawable.raven_keyboard_background) {
++            return;
++        }
++        final int color = activity.getColor(R.color.raven_touch_glow);
++        if ((color >>> 24) == 0) {
++            return;
++        }
++        final Window window = activity.getWindow();
++        final GlowBackdrop glow = new GlowBackdrop(
++                activity.getDrawable(R.drawable.raven_keyboard_background), color);
++        window.setBackgroundDrawable(glow);
++        window.setCallback(new TouchFollower(window.getCallback(), glow));
++    }
++
++    /** Feeds a touch event, in the drawable's coordinates, to the glow. */
++    public void onTouchEvent(MotionEvent event) {
++        switch (event.getActionMasked()) {
++            case MotionEvent.ACTION_DOWN:
++            case MotionEvent.ACTION_MOVE:
++                mTargetX = event.getX();
++                mTargetY = event.getY();
++                if (Float.isNaN(mX) || mStrength == 0f) {
++                    // Appear under the finger instead of sliding in from the last spot.
++                    mX = mTargetX;
++                    mY = mTargetY;
++                }
++                mTouching = true;
++                break;
++            case MotionEvent.ACTION_UP:
++            case MotionEvent.ACTION_CANCEL:
++                mTouching = false;
++                break;
++            default:
++                return;
++        }
++        if (!mAnimator.isStarted()) {
++            mAnimator.start();
++        }
++    }
++
++    @Override
++    public void onTimeUpdate(TimeAnimator animation, long totalTime, long deltaTime) {
++        final float dt = Math.min(deltaTime, 50);
++        final float follow = 1f - (float) Math.exp(-dt / FOLLOW_MILLIS);
++        mX += (mTargetX - mX) * follow;
++        mY += (mTargetY - mY) * follow;
++        if (mTouching) {
++            mStrength = Math.min(1f, mStrength + dt / FADE_IN_MILLIS);
++        } else {
++            mStrength = Math.max(0f, mStrength - dt / FADE_OUT_MILLIS);
++            if (mStrength == 0f) {
++                mAnimator.end();
++            }
++        }
++        invalidateSelf();
++    }
++
++    @Override
++    public void draw(Canvas canvas) {
++        mBase.draw(canvas);
++        if (mStrength <= 0f || Float.isNaN(mX)) {
++            return;
++        }
++        final Rect bounds = getBounds();
++        final float radius = RADIUS_FRACTION * Math.min(bounds.width(), bounds.height());
++        final int alpha = Math.round((mColor >>> 24) * mStrength);
++        final int center = (alpha << 24) | (mColor & 0xFFFFFF);
++        mPaint.setShader(new RadialGradient(mX, mY, radius,
++                new int[] {center, center & 0xFFFFFF}, null, Shader.TileMode.CLAMP));
++        canvas.drawCircle(mX, mY, radius, mPaint);
++    }
++
++    @Override
++    protected void onBoundsChange(Rect bounds) {
++        mBase.setBounds(bounds);
++    }
++
++    @Override
++    public void setAlpha(int alpha) {
++        mBase.setAlpha(alpha);
++    }
++
++    @Override
++    public void setColorFilter(ColorFilter colorFilter) {
++        mBase.setColorFilter(colorFilter);
++    }
++
++    @Override
++    public int getOpacity() {
++        return PixelFormat.OPAQUE;
++    }
++
++    /** Passes every window event through, showing touches to the glow on the way. */
++    private static class TouchFollower implements Window.Callback {
++        private final Window.Callback mWrapped;
++        private final GlowBackdrop mGlow;
++
++        TouchFollower(Window.Callback wrapped, GlowBackdrop glow) {
++            mWrapped = wrapped;
++            mGlow = glow;
++        }
++
++        @Override
++        public boolean dispatchTouchEvent(MotionEvent event) {
++            mGlow.onTouchEvent(event);
++            return mWrapped.dispatchTouchEvent(event);
++        }
++
++        @Override
++        public boolean dispatchKeyEvent(KeyEvent event) {
++            return mWrapped.dispatchKeyEvent(event);
++        }
++
++        @Override
++        public boolean dispatchKeyShortcutEvent(KeyEvent event) {
++            return mWrapped.dispatchKeyShortcutEvent(event);
++        }
++
++        @Override
++        public boolean dispatchTrackballEvent(MotionEvent event) {
++            return mWrapped.dispatchTrackballEvent(event);
++        }
++
++        @Override
++        public boolean dispatchGenericMotionEvent(MotionEvent event) {
++            return mWrapped.dispatchGenericMotionEvent(event);
++        }
++
++        @Override
++        public boolean dispatchPopulateAccessibilityEvent(AccessibilityEvent event) {
++            return mWrapped.dispatchPopulateAccessibilityEvent(event);
++        }
++
++        @Override
++        public View onCreatePanelView(int featureId) {
++            return mWrapped.onCreatePanelView(featureId);
++        }
++
++        @Override
++        public boolean onCreatePanelMenu(int featureId, Menu menu) {
++            return mWrapped.onCreatePanelMenu(featureId, menu);
++        }
++
++        @Override
++        public boolean onPreparePanel(int featureId, View view, Menu menu) {
++            return mWrapped.onPreparePanel(featureId, view, menu);
++        }
++
++        @Override
++        public boolean onMenuOpened(int featureId, Menu menu) {
++            return mWrapped.onMenuOpened(featureId, menu);
++        }
++
++        @Override
++        public boolean onMenuItemSelected(int featureId, MenuItem item) {
++            return mWrapped.onMenuItemSelected(featureId, item);
++        }
++
++        @Override
++        public void onWindowAttributesChanged(WindowManager.LayoutParams attrs) {
++            mWrapped.onWindowAttributesChanged(attrs);
++        }
++
++        @Override
++        public void onContentChanged() {
++            mWrapped.onContentChanged();
++        }
++
++        @Override
++        public void onWindowFocusChanged(boolean hasFocus) {
++            mWrapped.onWindowFocusChanged(hasFocus);
++        }
++
++        @Override
++        public void onAttachedToWindow() {
++            mWrapped.onAttachedToWindow();
++        }
++
++        @Override
++        public void onDetachedFromWindow() {
++            mWrapped.onDetachedFromWindow();
++        }
++
++        @Override
++        public void onPanelClosed(int featureId, Menu menu) {
++            mWrapped.onPanelClosed(featureId, menu);
++        }
++
++        @Override
++        public boolean onSearchRequested() {
++            return mWrapped.onSearchRequested();
++        }
++
++        @Override
++        public boolean onSearchRequested(SearchEvent searchEvent) {
++            return mWrapped.onSearchRequested(searchEvent);
++        }
++
++        @Override
++        public ActionMode onWindowStartingActionMode(ActionMode.Callback callback) {
++            return mWrapped.onWindowStartingActionMode(callback);
++        }
++
++        @Override
++        public ActionMode onWindowStartingActionMode(ActionMode.Callback callback, int type) {
++            return mWrapped.onWindowStartingActionMode(callback, type);
++        }
++
++        @Override
++        public void onActionModeStarted(ActionMode mode) {
++            mWrapped.onActionModeStarted(mode);
++        }
++
++        @Override
++        public void onActionModeFinished(ActionMode mode) {
++            mWrapped.onActionModeFinished(mode);
++        }
++
++        @Override
++        public void onProvideKeyboardShortcuts(List<KeyboardShortcutGroup> data, Menu menu,
++                int deviceId) {
++            mWrapped.onProvideKeyboardShortcuts(data, menu, deviceId);
++        }
++
++        @Override
++        public void onPointerCaptureChanged(boolean hasCapture) {
++            mWrapped.onPointerCaptureChanged(hasCapture);
++        }
++    }
++}
+diff --git a/java/src/com/android/inputmethod/keyboard/MainKeyboardView.java b/java/src/com/android/inputmethod/keyboard/MainKeyboardView.java
+index 00d4fa2..7e25bfb 100644
+--- a/java/src/com/android/inputmethod/keyboard/MainKeyboardView.java
++++ b/java/src/com/android/inputmethod/keyboard/MainKeyboardView.java
+@@ -140,6 +140,8 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
+ 
+     // Drawing preview placer view
+     private final DrawingPreviewPlacerView mDrawingPreviewPlacerView;
++    // RavenOS: the glass theme's backdrop, whose glow follows touches (null on other themes)
++    private GlowBackdrop mGlowBackdrop;
+     private final int[] mOriginCoords = CoordinateUtils.newInstance();
+     private final GestureFloatingTextDrawingPreview mGestureFloatingTextDrawingPreview;
+     private final GestureTrailsDrawingPreview mGestureTrailsDrawingPreview;
+@@ -256,6 +258,14 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
+         mSlidingKeyInputDrawingPreview.setDrawingView(drawingPreviewPlacerView);
+         mainKeyboardViewAttr.recycle();
+ 
++        // RavenOS: on the glass keyboard theme the backdrop glow follows touches.
++        final int touchGlow = context.getColor(R.color.raven_touch_glow);
++        if (KeyboardTheme.getKeyboardTheme(context).mThemeId == KeyboardTheme.THEME_ID_RAVEN_GLASS
++                && (touchGlow >>> 24) != 0 && getBackground() != null) {
++            mGlowBackdrop = new GlowBackdrop(getBackground(), touchGlow);
++            setBackground(mGlowBackdrop);
++        }
++
+         mDrawingPreviewPlacerView = drawingPreviewPlacerView;
+ 
+         final LayoutInflater inflater = LayoutInflater.from(getContext());
+@@ -698,6 +708,9 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
+         if (getKeyboard() == null) {
+             return false;
+         }
++        if (mGlowBackdrop != null) {
++            mGlowBackdrop.onTouchEvent(event);
++        }
+         if (mNonDistinctMultitouchHelper != null) {
+             if (event.getPointerCount() > 1 && mTimerHandler.isInKeyRepeat()) {
+                 // Key repeating timer will be canceled if 2 or more keys are in action.
+-- 
+2.53.0
+

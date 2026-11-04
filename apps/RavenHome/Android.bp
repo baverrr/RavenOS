@@ -1,0 +1,24 @@
+android_app {
+    name: "RavenHome",
+    srcs: ["src/**/*.java"],
+    resource_dirs: ["res"],
+    platform_apis: true,
+    certificate: "platform",
+    // The only launcher on RavenOS.
+    overrides: [
+        "Launcher3",
+        "Launcher3QuickStep",
+        "TrebuchetQuickStep",
+        "TrebuchetQuickStepGo",
+    ],
+    required: ["default-permissions-org.ravenos.home.xml"],
+    optimize: {
+        enabled: false,
+    },
+}
+
+prebuilt_etc {
+    name: "default-permissions-org.ravenos.home.xml",
+    src: "etc/default-permissions-org.ravenos.home.xml",
+    sub_dir: "default-permissions",
+}

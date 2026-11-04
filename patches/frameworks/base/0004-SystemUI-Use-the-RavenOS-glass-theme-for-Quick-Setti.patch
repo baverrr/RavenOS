@@ -1,0 +1,347 @@
+From e325a8fab09b7761a4b9e5123aa999ddb76e0975 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 20:17:15 -0700
+Subject: [PATCH] SystemUI: Use the RavenOS glass theme for Quick Settings and
+ screen record
+
+Match Quick Settings and the screen record dialog to the RavenOS glass
+theme used by Settings, with every color in res/values/raven_glass.xml
+(same names and Midnight Aurora defaults as Settings) so a product
+overlay can recolor them:
+
+- Draw the QS panel and the tile detail view on the glass backdrop: navy
+  with three soft glows, rounded to raven_card_radius, with a hairline
+  edge. The strip behind the status bar and its fade use the backdrop
+  navy instead of black.
+- Theme qs_theme: active tiles are an accent circle with a dark icon,
+  inactive tiles a faint glass circle with a light icon, and labels,
+  footer icons, the brightness slider and ripples use the theme colors.
+  qs_theme is also used by the volume dialog and the power menu, which
+  pick up the same colors.
+- Use the theme surface for the tile editor and the brightness mirror.
+- Give the screen record dialog a dark surface card with a hairline
+  edge, light text and icons, and accent switches and buttons, instead
+  of the light dialog theme.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I7973f7b20da68f288841fbb8f62e169274595b92
+---
+ .../SystemUI/res/color/qs_background_dark.xml |  2 +-
+ .../res/drawable/qs_background_primary.xml    |  9 ++--
+ .../SystemUI/res/drawable/qs_bg_gradient.xml  |  2 +-
+ .../res/drawable/qs_detail_background.xml     |  8 +---
+ .../res/drawable/qs_footer_drag_handle.xml    |  2 +-
+ .../SystemUI/res/drawable/raven_dialog_bg.xml | 12 +++++
+ .../res/drawable/raven_qs_backdrop.xml        | 45 +++++++++++++++++++
+ packages/SystemUI/res/layout/qs_panel.xml     |  2 +-
+ .../res/layout/screen_record_dialog.xml       |  8 ++--
+ packages/SystemUI/res/values-night/colors.xml |  4 +-
+ packages/SystemUI/res/values/colors.xml       |  4 +-
+ packages/SystemUI/res/values/raven_glass.xml  | 25 +++++++++++
+ packages/SystemUI/res/values/styles.xml       | 24 ++++++++++
+ 13 files changed, 123 insertions(+), 24 deletions(-)
+ create mode 100644 packages/SystemUI/res/drawable/raven_dialog_bg.xml
+ create mode 100644 packages/SystemUI/res/drawable/raven_qs_backdrop.xml
+ create mode 100644 packages/SystemUI/res/values/raven_glass.xml
+
+diff --git a/packages/SystemUI/res/color/qs_background_dark.xml b/packages/SystemUI/res/color/qs_background_dark.xml
+index 24afebde..53b4aa2f 100644
+--- a/packages/SystemUI/res/color/qs_background_dark.xml
++++ b/packages/SystemUI/res/color/qs_background_dark.xml
+@@ -16,5 +16,5 @@
+ 
+ <selector xmlns:android="http://schemas.android.com/apk/res/android">
+     <item android:alpha="1"
+-          android:color="?android:attr/colorBackgroundFloating"/>
++          android:color="@color/raven_surface"/>
+ </selector>
+diff --git a/packages/SystemUI/res/drawable/qs_background_primary.xml b/packages/SystemUI/res/drawable/qs_background_primary.xml
+index dd74cadd..5f25a9d6 100644
+--- a/packages/SystemUI/res/drawable/qs_background_primary.xml
++++ b/packages/SystemUI/res/drawable/qs_background_primary.xml
+@@ -13,9 +13,6 @@
+      See the License for the specific language governing permissions and
+      limitations under the License.
+ -->
+-<inset xmlns:android="http://schemas.android.com/apk/res/android">
+-    <shape>
+-        <solid android:color="@color/qs_background_dark"/>
+-        <corners android:radius="?android:attr/dialogCornerRadius" />
+-    </shape>
+-</inset>
++<!-- RavenOS: Quick Settings sits on the glass theme backdrop. -->
++<inset xmlns:android="http://schemas.android.com/apk/res/android"
++    android:drawable="@drawable/raven_qs_backdrop" />
+diff --git a/packages/SystemUI/res/drawable/qs_bg_gradient.xml b/packages/SystemUI/res/drawable/qs_bg_gradient.xml
+index a1ad5284..fdf80b23 100644
+--- a/packages/SystemUI/res/drawable/qs_bg_gradient.xml
++++ b/packages/SystemUI/res/drawable/qs_bg_gradient.xml
+@@ -18,7 +18,7 @@
+     android:shape="rectangle">
+     <gradient
+         android:angle="270"
+-        android:startColor="#ff000000"
++        android:startColor="@color/raven_bg"
+         android:endColor="#00000000"
+         android:type="linear" />
+ </shape>
+diff --git a/packages/SystemUI/res/drawable/qs_detail_background.xml b/packages/SystemUI/res/drawable/qs_detail_background.xml
+index 4ba78504..41020a3b 100644
+--- a/packages/SystemUI/res/drawable/qs_detail_background.xml
++++ b/packages/SystemUI/res/drawable/qs_detail_background.xml
+@@ -23,11 +23,7 @@ Copyright (C) 2014 The Android Open Source Project
+         </inset>
+     </item>
+     <item>
+-        <inset>
+-            <shape>
+-                <solid android:color="@color/qs_background_dark"/>
+-                <corners android:radius="?android:attr/dialogCornerRadius" />
+-            </shape>
+-        </inset>
++        <!-- RavenOS: the detail view ends on the glass backdrop, like the panel. -->
++        <inset android:drawable="@drawable/raven_qs_backdrop" />
+     </item>
+ </transition>
+diff --git a/packages/SystemUI/res/drawable/qs_footer_drag_handle.xml b/packages/SystemUI/res/drawable/qs_footer_drag_handle.xml
+index 509cd1fb..69801758 100644
+--- a/packages/SystemUI/res/drawable/qs_footer_drag_handle.xml
++++ b/packages/SystemUI/res/drawable/qs_footer_drag_handle.xml
+@@ -17,6 +17,6 @@
+     xmlns:android="http://schemas.android.com/apk/res/android"
+     android:shape="rectangle" >
+     <solid
+-        android:color="#e5e5e5" />
++        android:color="@color/raven_fg_3" />
+     <corners android:radius="2dp" />
+ </shape>
+diff --git a/packages/SystemUI/res/drawable/raven_dialog_bg.xml b/packages/SystemUI/res/drawable/raven_dialog_bg.xml
+new file mode 100644
+index 00000000..18b90c3b
+--- /dev/null
++++ b/packages/SystemUI/res/drawable/raven_dialog_bg.xml
+@@ -0,0 +1,12 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Solid glass-theme card for SystemUI dialogs (Android 11 can't blur behind them). -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android"
++       android:shape="rectangle">
++    <solid android:color="@color/raven_surface" />
++    <stroke android:width="1dp" android:color="@color/raven_glass_stroke" />
++    <corners android:radius="@dimen/raven_card_radius" />
++</shape>
+diff --git a/packages/SystemUI/res/drawable/raven_qs_backdrop.xml b/packages/SystemUI/res/drawable/raven_qs_backdrop.xml
+new file mode 100644
+index 00000000..dd9d0f83
+--- /dev/null
++++ b/packages/SystemUI/res/drawable/raven_qs_backdrop.xml
+@@ -0,0 +1,45 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Glass sheet behind Quick Settings: the Aurora navy with the same soft glows as the
++     Settings backdrop, clipped to the panel's rounded corners, with a hairline edge. -->
++<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
++    <item>
++        <shape>
++            <solid android:color="@color/raven_bg" />
++            <corners android:radius="@dimen/raven_card_radius" />
++        </shape>
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.15" android:centerY="0.9"
++                android:gradientRadius="80%p"
++                android:startColor="@color/raven_glow_1" android:endColor="#00000000" />
++            <corners android:radius="@dimen/raven_card_radius" />
++        </shape>
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.8" android:centerY="0.15"
++                android:gradientRadius="75%p"
++                android:startColor="@color/raven_glow_2" android:endColor="#00000000" />
++            <corners android:radius="@dimen/raven_card_radius" />
++        </shape>
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.55" android:centerY="0.55"
++                android:gradientRadius="55%p"
++                android:startColor="@color/raven_glow_3" android:endColor="#00000000" />
++            <corners android:radius="@dimen/raven_card_radius" />
++        </shape>
++    </item>
++    <item>
++        <shape>
++            <stroke android:width="1dp" android:color="@color/raven_glass_stroke" />
++            <corners android:radius="@dimen/raven_card_radius" />
++        </shape>
++    </item>
++</layer-list>
+diff --git a/packages/SystemUI/res/layout/qs_panel.xml b/packages/SystemUI/res/layout/qs_panel.xml
+index 4527c6c7..1dec20b0 100644
+--- a/packages/SystemUI/res/layout/qs_panel.xml
++++ b/packages/SystemUI/res/layout/qs_panel.xml
+@@ -36,7 +36,7 @@
+         android:layout_height="@*android:dimen/quick_qs_offset_height"
+         android:clipToPadding="false"
+         android:clipChildren="false"
+-        android:background="#ff000000" />
++        android:background="@color/raven_bg" />
+ 
+     <!-- Gradient view behind QS -->
+     <View
+diff --git a/packages/SystemUI/res/layout/screen_record_dialog.xml b/packages/SystemUI/res/layout/screen_record_dialog.xml
+index acef9431..390dc770 100644
+--- a/packages/SystemUI/res/layout/screen_record_dialog.xml
++++ b/packages/SystemUI/res/layout/screen_record_dialog.xml
+@@ -18,7 +18,7 @@
+     android:layout_width="match_parent"
+     android:layout_height="wrap_content"
+     android:orientation="vertical"
+-    android:background="@drawable/rounded_bg_full">
++    android:background="@drawable/raven_dialog_bg">
+ 
+     <!-- Scrollview is necessary to fit everything in landscape layout -->
+     <ScrollView
+@@ -65,7 +65,7 @@
+                         android:layout_width="@dimen/screenrecord_logo_size"
+                         android:layout_height="@dimen/screenrecord_logo_size"
+                         android:src="@drawable/ic_mic_26dp"
+-                        android:tint="@color/GM2_grey_700"
++                        android:tint="?android:attr/textColorSecondary"
+                         android:layout_gravity="center"
+                         android:layout_weight="0"
+                         android:layout_marginRight="@dimen/screenrecord_dialog_padding"/>
+@@ -93,7 +93,7 @@
+                         android:layout_width="@dimen/screenrecord_logo_size"
+                         android:layout_height="@dimen/screenrecord_logo_size"
+                         android:src="@drawable/ic_touch"
+-                        android:tint="@color/GM2_grey_700"
++                        android:tint="?android:attr/textColorSecondary"
+                         android:layout_gravity="center"
+                         android:layout_marginRight="@dimen/screenrecord_dialog_padding"/>
+                     <Switch
+@@ -111,7 +111,7 @@
+             <View
+                 android:layout_width="match_parent"
+                 android:layout_height="1dp"
+-                android:background="@color/GM2_grey_300"/>
++                android:background="@color/raven_separator"/>
+ 
+             <!-- Buttons -->
+             <LinearLayout
+diff --git a/packages/SystemUI/res/values-night/colors.xml b/packages/SystemUI/res/values-night/colors.xml
+index cb9e178d..94075bf4 100644
+--- a/packages/SystemUI/res/values-night/colors.xml
++++ b/packages/SystemUI/res/values-night/colors.xml
+@@ -54,10 +54,10 @@
+     <color name="notification_channel_dialog_separator">@color/GM2_grey_700</color>
+ 
+     <!-- The color of the background in the top part of QSCustomizer -->
+-    <color name="qs_customize_background">@color/GM2_grey_900</color>
++    <color name="qs_customize_background">@color/raven_surface</color>
+ 
+     <!-- The color of the background in the bottom part of QSCustomizer -->
+-    <color name="qs_customize_decoration">@color/GM2_grey_800</color>
++    <color name="qs_customize_decoration">@color/raven_glass</color>
+ 
+     <!-- The color of the background in the separated list of the Global Actions menu -->
+     <color name="global_actions_separated_background">@color/GM2_grey_900</color>
+diff --git a/packages/SystemUI/res/values/colors.xml b/packages/SystemUI/res/values/colors.xml
+index 994a1811..ff5158f0 100644
+--- a/packages/SystemUI/res/values/colors.xml
++++ b/packages/SystemUI/res/values/colors.xml
+@@ -35,8 +35,8 @@
+     <color name="status_bar_clock_color">#FFFFFFFF</color>
+     <color name="qs_user_detail_icon_muted">#FFFFFFFF</color> <!-- not so muted after all -->
+     <color name="qs_tile_disabled_color">#9E9E9E</color> <!-- 38% black -->
+-    <color name="qs_customize_background">@color/GM2_grey_50</color>
+-    <color name="qs_customize_decoration">@color/GM2_grey_100</color>
++    <color name="qs_customize_background">@color/raven_surface</color>
++    <color name="qs_customize_decoration">@color/raven_glass</color>
+ 
+     <!-- The color of the background in the separated list of the Global Actions menu -->
+     <color name="global_actions_separated_background">#F5F5F5</color>
+diff --git a/packages/SystemUI/res/values/raven_glass.xml b/packages/SystemUI/res/values/raven_glass.xml
+new file mode 100644
+index 00000000..ebf2132d
+--- /dev/null
++++ b/packages/SystemUI/res/values/raven_glass.xml
+@@ -0,0 +1,25 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- RavenOS glass theme colors for Quick Settings and the screen record dialog. Same names
++     and Midnight Aurora defaults as packages/apps/Settings/res/values/raven_glass.xml, so a
++     glass theme variant can recolor SystemUI with the same overlay values. -->
++<resources>
++    <color name="raven_bg">#FF070B1D</color>
++    <color name="raven_glow_1">#CC0D9488</color>
++    <color name="raven_glow_2">#AA7C3AED</color>
++    <color name="raven_glow_3">#881E3A8A</color>
++    <color name="raven_fg">#FFF0F9FF</color>
++    <color name="raven_fg_2">#FFBAE6FD</color>
++    <color name="raven_fg_3">#FF7FA3C4</color>
++    <color name="raven_glass">#12FFFFFF</color>
++    <color name="raven_glass_stroke">#29BAE6FD</color>
++    <color name="raven_separator">#1ABAE6FD</color>
++    <color name="raven_ripple">#1FFFFFFF</color>
++    <color name="raven_accent">#FF22D3EE</color>
++    <color name="raven_on_accent">#FF04212A</color>
++    <color name="raven_surface">#FF141B33</color>
++    <dimen name="raven_card_radius">20dp</dimen>
++</resources>
+diff --git a/packages/SystemUI/res/values/styles.xml b/packages/SystemUI/res/values/styles.xml
+index 1c051820..ec1bc677 100644
+--- a/packages/SystemUI/res/values/styles.xml
++++ b/packages/SystemUI/res/values/styles.xml
+@@ -392,6 +392,19 @@
+         <item name="android:colorError">@*android:color/error_color_material_dark</item>
+         <item name="android:windowIsFloating">true</item>
+         <item name="android:homeAsUpIndicator">@drawable/ic_arrow_back</item>
++        <!-- RavenOS glass theme. Active tiles: accent circle with a dark icon (colorAccent,
++             colorPrimary). Inactive tiles: a faint glass circle (textColorTertiary at the
++             disabled alpha) with a light icon (textColorSecondary). -->
++        <item name="android:colorAccent">@color/raven_accent</item>
++        <item name="android:colorPrimary">@color/raven_on_accent</item>
++        <item name="android:textColorPrimary">@color/raven_fg</item>
++        <item name="android:textColorSecondary">@color/raven_fg_2</item>
++        <item name="android:textColorTertiary">@color/raven_fg_3</item>
++        <item name="android:colorForeground">@color/raven_fg</item>
++        <item name="android:colorControlNormal">@color/raven_fg_2</item>
++        <item name="android:colorControlActivated">@color/raven_accent</item>
++        <item name="android:colorControlHighlight">@color/raven_ripple</item>
++        <item name="android:colorBackgroundFloating">@color/raven_surface</item>
+     </style>
+ 
+     <style name="systemui_theme_remote_input" parent="@android:style/Theme.DeviceDefault.Light">
+@@ -666,6 +679,17 @@
+         <item name="android:windowIsFloating">true</item>
+         <item name="android:backgroundDimEnabled">true</item>
+         <item name="android:windowCloseOnTouchOutside">true</item>
++        <!-- RavenOS glass theme: a solid surface card with light text and accent controls. -->
++        <item name="android:colorBackgroundFloating">@color/raven_surface</item>
++        <item name="android:textColorPrimary">@color/raven_fg</item>
++        <item name="android:textColorSecondary">@color/raven_fg_2</item>
++        <item name="android:textColorTertiary">@color/raven_fg_3</item>
++        <item name="android:textColorPrimaryInverse">@color/raven_on_accent</item>
++        <item name="android:colorAccent">@color/raven_accent</item>
++        <item name="android:colorControlNormal">@color/raven_fg_2</item>
++        <item name="android:colorControlActivated">@color/raven_accent</item>
++        <item name="android:colorControlHighlight">@color/raven_ripple</item>
++        <item name="*android:isLightTheme">false</item>
+     </style>
+ 
+     <!-- USB Contaminant dialog -->
+-- 
+2.53.0
+

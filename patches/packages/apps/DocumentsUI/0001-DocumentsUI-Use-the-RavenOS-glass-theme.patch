@@ -1,0 +1,735 @@
+From 49aa33058dcbe9874f695b7c320ba84b1b03bc77 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 21:32:49 -0700
+Subject: [PATCH] DocumentsUI: Use the RavenOS glass theme
+
+Draw Files like the RavenOS glass Settings, always dark:
+
+- Use raven_backdrop as the window background, with the file list,
+  directory header and breadcrumb transparent over it. The strip pinned
+  behind the toolbar stays solid so scrolling files don't show through.
+- Turn the toolbar and search bar into a flat glass pill, and the
+  selection bar into a solid surface pill.
+- Draw grid items as glass cards with a hairline stroke and the theme's
+  card radius, with no elevation; list rows are clear, and selected rows,
+  roots and chips use the accent-tinted glass.
+- Put the navigation drawer, menus, bottom sheets and dialogs on a solid
+  surface (Android 11 has no backdrop blur), with the accent for the
+  selected root, buttons and progress.
+
+Every color comes from res/values/raven_glass.xml, so a product overlay
+can recolor Files to match the device's Settings theme.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I0c3de533bcfe76e2a88fecea32cb1d005822970b
+---
+ res/color/raven_text_primary.xml              |  9 ++++
+ res/color/raven_text_secondary.xml            |  9 ++++
+ res/color/search_chip_background_color.xml    |  2 +-
+ .../bottom_sheet_dialog_background.xml        |  2 +-
+ res/drawable/grid_item_background.xml         |  2 +-
+ res/drawable/list_item_background.xml         |  2 +-
+ res/drawable/raven_action_mode_bg.xml         | 12 +++++
+ res/drawable/raven_backdrop.xml               | 33 ++++++++++++++
+ res/drawable/raven_search_pill.xml            | 11 +++++
+ res/drawable/root_list_selector.xml           |  8 ++--
+ res/drawable/search_bar_background.xml        |  3 +-
+ res/drawable/sort_widget_background.xml       |  2 +-
+ res/layout-sw720dp/directory_app_bar.xml      |  6 +--
+ res/layout/directory_app_bar.xml              |  8 ++--
+ res/layout/directory_header.xml               |  2 +-
+ res/layout/drawer_layout.xml                  |  4 +-
+ res/layout/fixed_layout.xml                   |  4 +-
+ res/layout/fragment_directory.xml             |  2 +-
+ res/layout/item_dir_grid.xml                  |  2 +-
+ res/layout/item_doc_grid.xml                  |  2 +-
+ res/layout/item_doc_inflated_message.xml      |  2 +-
+ res/values-night/colors.xml                   | 27 ++++++------
+ res/values-night/themes.xml                   | 22 ++++++----
+ res/values/colors.xml                         | 35 ++++++++-------
+ res/values/dimens.xml                         |  6 +--
+ res/values/raven_glass.xml                    | 44 +++++++++++++++++++
+ res/values/styles.xml                         |  4 +-
+ res/values/themes.xml                         | 30 +++++++++----
+ 28 files changed, 217 insertions(+), 78 deletions(-)
+ create mode 100644 res/color/raven_text_primary.xml
+ create mode 100644 res/color/raven_text_secondary.xml
+ create mode 100644 res/drawable/raven_action_mode_bg.xml
+ create mode 100644 res/drawable/raven_backdrop.xml
+ create mode 100644 res/drawable/raven_search_pill.xml
+ create mode 100644 res/values/raven_glass.xml
+
+diff --git a/res/color/raven_text_primary.xml b/res/color/raven_text_primary.xml
+new file mode 100644
+index 0000000..cf7b5a5
+--- /dev/null
++++ b/res/color/raven_text_primary.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:state_enabled="false" android:alpha="0.4" android:color="@color/raven_fg" />
++    <item android:color="@color/raven_fg" />
++</selector>
+diff --git a/res/color/raven_text_secondary.xml b/res/color/raven_text_secondary.xml
+new file mode 100644
+index 0000000..b82014d
+--- /dev/null
++++ b/res/color/raven_text_secondary.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<selector xmlns:android="http://schemas.android.com/apk/res/android">
++    <item android:state_enabled="false" android:alpha="0.4" android:color="@color/raven_fg_2" />
++    <item android:color="@color/raven_fg_2" />
++</selector>
+diff --git a/res/color/search_chip_background_color.xml b/res/color/search_chip_background_color.xml
+index c94d155..dc7171b 100644
+--- a/res/color/search_chip_background_color.xml
++++ b/res/color/search_chip_background_color.xml
+@@ -17,6 +17,6 @@
+ 
+ <selector xmlns:android="http://schemas.android.com/apk/res/android">
+     <item android:state_selected="true" android:color="?android:attr/colorSecondary"/>
+-    <item android:state_enabled="true" android:color="?android:attr/colorBackground"/>
++    <item android:state_enabled="true" android:color="@color/raven_glass"/>
+     <item android:state_enabled="false" android:color="@color/chip_background_disable_color"/>
+ </selector>
+\ No newline at end of file
+diff --git a/res/drawable/bottom_sheet_dialog_background.xml b/res/drawable/bottom_sheet_dialog_background.xml
+index 703667a..7166c5d 100644
+--- a/res/drawable/bottom_sheet_dialog_background.xml
++++ b/res/drawable/bottom_sheet_dialog_background.xml
+@@ -15,7 +15,7 @@
+ -->
+ <shape xmlns:android="http://schemas.android.com/apk/res/android">
+ 
+-    <solid android:color="?android:attr/colorBackground" />
++    <solid android:color="@color/raven_surface" />
+ 
+     <corners android:topLeftRadius="@dimen/grid_item_radius"
+              android:topRightRadius="@dimen/grid_item_radius"
+diff --git a/res/drawable/grid_item_background.xml b/res/drawable/grid_item_background.xml
+index 9c4e644..a664b71 100644
+--- a/res/drawable/grid_item_background.xml
++++ b/res/drawable/grid_item_background.xml
+@@ -22,6 +22,6 @@
+         <color android:color="?android:strokeColor"/>
+     </item>
+     <item android:state_selected="false">
+-        <color android:color="?android:colorBackground"/>
++        <color android:color="@android:color/transparent"/>
+     </item>
+ </selector>
+\ No newline at end of file
+diff --git a/res/drawable/list_item_background.xml b/res/drawable/list_item_background.xml
+index afbeecd..c2ea8aa 100644
+--- a/res/drawable/list_item_background.xml
++++ b/res/drawable/list_item_background.xml
+@@ -26,6 +26,6 @@
+     </item>
+     <item android:state_selected="false"
+           android:state_focused="false">
+-        <color android:color="@color/app_background_color"/>
++        <color android:color="@android:color/transparent"/>
+     </item>
+ </selector>
+\ No newline at end of file
+diff --git a/res/drawable/raven_action_mode_bg.xml b/res/drawable/raven_action_mode_bg.xml
+new file mode 100644
+index 0000000..04d4725
+--- /dev/null
++++ b/res/drawable/raven_action_mode_bg.xml
+@@ -0,0 +1,12 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Selection (action mode) bar: a solid surface pill, so the toolbar under it can't
++     show through. -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
++    <solid android:color="@color/raven_surface" />
++    <stroke android:width="1dp" android:color="@color/raven_glass_stroke" />
++    <corners android:radius="999dp" />
++</shape>
+diff --git a/res/drawable/raven_backdrop.xml b/res/drawable/raven_backdrop.xml
+new file mode 100644
+index 0000000..25b0440
+--- /dev/null
++++ b/res/drawable/raven_backdrop.xml
+@@ -0,0 +1,33 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Window backdrop behind every Settings page. Android 11 has no backdrop blur, so the
++     softness of the "glass" comes from these wide, already-blurred glows. -->
++<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
++    <item>
++        <color android:color="@color/raven_bg" />
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.15" android:centerY="0.9"
++                android:gradientRadius="80%p"
++                android:startColor="@color/raven_glow_1" android:endColor="#00000000" />
++        </shape>
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.8" android:centerY="0.15"
++                android:gradientRadius="75%p"
++                android:startColor="@color/raven_glow_2" android:endColor="#00000000" />
++        </shape>
++    </item>
++    <item>
++        <shape android:dither="true">
++            <gradient android:type="radial" android:centerX="0.55" android:centerY="0.55"
++                android:gradientRadius="55%p"
++                android:startColor="@color/raven_glow_3" android:endColor="#00000000" />
++        </shape>
++    </item>
++</layer-list>
+diff --git a/res/drawable/raven_search_pill.xml b/res/drawable/raven_search_pill.xml
+new file mode 100644
+index 0000000..c285251
+--- /dev/null
++++ b/res/drawable/raven_search_pill.xml
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- The toolbar / search bar as a glass pill over the backdrop. -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
++    <solid android:color="@color/raven_glass" />
++    <stroke android:width="1dp" android:color="@color/raven_glass_stroke" />
++    <corners android:radius="999dp" />
++</shape>
+diff --git a/res/drawable/root_list_selector.xml b/res/drawable/root_list_selector.xml
+index 911c2ed..235c0f2 100644
+--- a/res/drawable/root_list_selector.xml
++++ b/res/drawable/root_list_selector.xml
+@@ -20,10 +20,10 @@
+         xmlns:android="http://schemas.android.com/apk/res/android"
+         android:shape="rectangle">
+         <corners
+-            android:topLeftRadius="2dp"
+-            android:topRightRadius="2dp"
+-            android:bottomLeftRadius="2dp"
+-            android:bottomRightRadius="2dp"/>
++            android:topLeftRadius="@dimen/raven_card_radius"
++            android:topRightRadius="@dimen/raven_card_radius"
++            android:bottomLeftRadius="@dimen/raven_card_radius"
++            android:bottomRightRadius="@dimen/raven_card_radius"/>
+         <solid
+             android:color="?android:attr/colorSecondary"/>
+     </shape>
+diff --git a/res/drawable/search_bar_background.xml b/res/drawable/search_bar_background.xml
+index ab657c3..b9a4c76 100644
+--- a/res/drawable/search_bar_background.xml
++++ b/res/drawable/search_bar_background.xml
+@@ -23,7 +23,8 @@
+         android:start="@dimen/search_bar_background_margin_start"
+         android:end="@dimen/search_bar_background_margin_end">
+         <shape android:shape="rectangle">
+-            <solid android:color="?android:attr/colorBackgroundFloating"/>
++            <solid android:color="@color/raven_glass"/>
++            <stroke android:width="1dp" android:color="@color/raven_glass_stroke"/>
+             <corners android:radius="@dimen/search_bar_radius"/>
+         </shape>
+     </item>
+diff --git a/res/drawable/sort_widget_background.xml b/res/drawable/sort_widget_background.xml
+index b7f6ae5..f5b293c 100644
+--- a/res/drawable/sort_widget_background.xml
++++ b/res/drawable/sort_widget_background.xml
+@@ -24,7 +24,7 @@
+         <shape android:shape="rectangle">
+             <stroke
+                 android:width="1dp"
+-                android:color="#1f000000" />
++                android:color="@color/raven_separator" />
+         </shape>
+     </item>
+ </layer-list>
+diff --git a/res/layout-sw720dp/directory_app_bar.xml b/res/layout-sw720dp/directory_app_bar.xml
+index 9286597..c7e2dae 100644
+--- a/res/layout-sw720dp/directory_app_bar.xml
++++ b/res/layout-sw720dp/directory_app_bar.xml
+@@ -20,17 +20,17 @@
+     android:id="@+id/app_bar"
+     android:layout_width="match_parent"
+     android:layout_height="wrap_content"
+-    android:background="?android:attr/colorBackground">
++    android:background="@android:color/transparent">
+ 
+     <androidx.appcompat.widget.Toolbar
+         android:id="@+id/toolbar"
+         android:layout_width="match_parent"
+         android:layout_height="?android:attr/actionBarSize"
+         android:layout_margin="@dimen/search_bar_margin"
+-        android:background="?android:attr/colorBackground"
++        android:background="@drawable/raven_search_pill"
+         android:theme="?actionBarTheme"
+         android:popupTheme="?actionBarPopupTheme"
+-        android:elevation="3dp"
++        android:elevation="0dp"
+         app:collapseContentDescription="@string/button_back"
+         app:titleTextAppearance="@style/ToolbarTitle"
+         app:layout_collapseMode="pin">
+diff --git a/res/layout/directory_app_bar.xml b/res/layout/directory_app_bar.xml
+index 3225ce5..843cb70 100644
+--- a/res/layout/directory_app_bar.xml
++++ b/res/layout/directory_app_bar.xml
+@@ -20,13 +20,13 @@
+     android:id="@+id/app_bar"
+     android:layout_width="match_parent"
+     android:layout_height="wrap_content"
+-    android:background="?android:attr/colorBackground">
++    android:background="@android:color/transparent">
+ 
+     <com.google.android.material.appbar.CollapsingToolbarLayout
+         android:id="@+id/collapsing_toolbar"
+         android:layout_width="match_parent"
+         android:layout_height="wrap_content"
+-        android:elevation="3dp"
++        android:elevation="0dp"
+         app:titleEnabled="false"
+         app:layout_scrollFlags="scroll|enterAlways|enterAlwaysCollapsed">
+ 
+@@ -50,10 +50,10 @@
+             android:layout_width="match_parent"
+             android:layout_height="?android:attr/actionBarSize"
+             android:layout_margin="@dimen/search_bar_margin"
+-            android:background="?android:attr/colorBackground"
++            android:background="@drawable/raven_search_pill"
+             android:theme="?actionBarTheme"
+             android:popupTheme="?actionBarPopupTheme"
+-            android:elevation="3dp"
++            android:elevation="0dp"
+             app:collapseContentDescription="@string/button_back"
+             app:titleTextAppearance="@style/ToolbarTitle"
+             app:layout_collapseMode="pin">
+diff --git a/res/layout/directory_header.xml b/res/layout/directory_header.xml
+index 94c52e9..071c557 100644
+--- a/res/layout/directory_header.xml
++++ b/res/layout/directory_header.xml
+@@ -25,7 +25,7 @@
+         android:id="@+id/horizontal_breadcrumb"
+         android:layout_width="match_parent"
+         android:layout_height="wrap_content"
+-        android:background="?android:attr/colorBackground"/>
++        android:background="@android:color/transparent"/>
+ 
+     <!-- used for search chip. -->
+     <include layout="@layout/search_chip_row"/>
+diff --git a/res/layout/drawer_layout.xml b/res/layout/drawer_layout.xml
+index 0b2a81d..57cfa08 100644
+--- a/res/layout/drawer_layout.xml
++++ b/res/layout/drawer_layout.xml
+@@ -86,13 +86,13 @@
+             android:layout_gravity="start"
+             android:orientation="vertical"
+             android:elevation="0dp"
+-            android:background="?android:attr/colorBackground">
++            android:background="@color/raven_surface">
+ 
+             <androidx.appcompat.widget.Toolbar
+                 android:id="@+id/roots_toolbar"
+                 android:layout_width="match_parent"
+                 android:layout_height="?android:attr/actionBarSize"
+-                android:background="?android:attr/colorBackground"
++                android:background="@color/raven_surface"
+                 android:elevation="0dp"
+                 app:titleTextAppearance="@style/DrawerMenuTitle"
+                 app:titleTextColor="?android:colorPrimary"/>
+diff --git a/res/layout/fixed_layout.xml b/res/layout/fixed_layout.xml
+index fb2cb24..f28338e 100644
+--- a/res/layout/fixed_layout.xml
++++ b/res/layout/fixed_layout.xml
+@@ -34,8 +34,8 @@
+             android:layout_width="match_parent"
+             android:layout_height="?android:attr/actionBarSize"
+             android:layout_margin="@dimen/search_bar_margin"
+-            android:background="?android:attr/colorBackground"
+-            android:elevation="3dp"
++            android:background="@drawable/raven_search_pill"
++            android:elevation="0dp"
+             android:theme="?actionBarTheme"
+             android:popupTheme="?actionBarPopupTheme"
+             app:collapseContentDescription="@string/button_back"
+diff --git a/res/layout/fragment_directory.xml b/res/layout/fragment_directory.xml
+index dda8412..9692ae2 100644
+--- a/res/layout/fragment_directory.xml
++++ b/res/layout/fragment_directory.xml
+@@ -19,7 +19,7 @@
+     xmlns:app="http://schemas.android.com/apk/res-auto"
+     android:layout_width="match_parent"
+     android:layout_height="match_parent"
+-    android:background="?android:attr/colorBackground"
++    android:background="@android:color/transparent"
+     android:outlineProvider="bounds"
+     android:elevation="4dp"
+     android:orientation="vertical">
+diff --git a/res/layout/item_dir_grid.xml b/res/layout/item_dir_grid.xml
+index 269dd07..eefb887 100644
+--- a/res/layout/item_dir_grid.xml
++++ b/res/layout/item_dir_grid.xml
+@@ -46,7 +46,7 @@
+             android:layout_width="match_parent"
+             android:layout_height="match_parent"
+             android:orientation="horizontal"
+-            android:background="?android:attr/colorBackground"
++            android:background="@android:color/transparent"
+             android:gravity="center_vertical">
+ 
+             <FrameLayout
+diff --git a/res/layout/item_doc_grid.xml b/res/layout/item_doc_grid.xml
+index 0722a9d..a0ce2a7 100644
+--- a/res/layout/item_doc_grid.xml
++++ b/res/layout/item_doc_grid.xml
+@@ -98,7 +98,7 @@
+ 
+             <LinearLayout
+                 android:id="@+id/nameplate"
+-                android:background="?android:attr/colorBackground"
++                android:background="@android:color/transparent"
+                 android:orientation="horizontal"
+                 android:layout_width="match_parent"
+                 android:layout_height="wrap_content"
+diff --git a/res/layout/item_doc_inflated_message.xml b/res/layout/item_doc_inflated_message.xml
+index abfdbfd..5f287e6 100644
+--- a/res/layout/item_doc_inflated_message.xml
++++ b/res/layout/item_doc_inflated_message.xml
+@@ -19,7 +19,7 @@
+     android:id="@android:id/empty"
+     android:layout_width="match_parent"
+     android:layout_height="wrap_content"
+-    android:background="?android:attr/colorBackground"
++    android:background="@android:color/transparent"
+     android:focusable="true">
+ 
+     <include android:id="@+id/content" layout="@layout/item_doc_inflated_message_content"/>
+diff --git a/res/values-night/colors.xml b/res/values-night/colors.xml
+index 86bcbbc..a90248a 100644
+--- a/res/values-night/colors.xml
++++ b/res/values-night/colors.xml
+@@ -14,23 +14,24 @@
+      limitations under the License.
+ -->
+ <resources>
+-    <color name="app_background_color">#202124</color>
+-    <color name="background_floating">#3C4043</color>
++    <!-- RavenOS: colors below point at raven_glass.xml (the glass theme). -->
++    <color name="app_background_color">@color/raven_bg</color>
++    <color name="background_floating">@color/raven_surface</color>
+     <color name="nav_bar_translucent">#52000000</color>
+ 
+-    <color name="primary">#8AB4F8</color>
+-    <color name="secondary">#3D8AB4F8</color>
+-    <color name="hairline">#5F6368</color>
++    <color name="primary">@color/raven_accent</color>
++    <color name="secondary">@color/raven_switchbar_on</color>
++    <color name="hairline">@color/raven_glass_stroke</color>
+ 
+-    <color name="briefcase_icon_color">#669DF6</color> <!-- Blue 400 -->
+-    <color name="cross_profile_button_text_color">#669DF6</color> <!-- Blue 400 -->
+-    <color name="empty_state_text">@android:color/white</color>
+-    <color name="error_image_color">@android:color/white</color>
++    <color name="briefcase_icon_color">@color/raven_accent</color> <!-- Blue 400 -->
++    <color name="cross_profile_button_text_color">@color/raven_accent</color> <!-- Blue 400 -->
++    <color name="empty_state_text">@color/raven_fg</color>
++    <color name="error_image_color">@color/raven_fg_3</color>
+ 
+-    <color name="edge_effect">@android:color/white</color>
+-    <color name="tab_indicator_color">#669DF6</color> <!-- Blue 400 -->
++    <color name="edge_effect">@color/raven_fg_3</color>
++    <color name="tab_indicator_color">@color/raven_accent</color> <!-- Blue 400 -->
+ 
+     <!-- AppCompat.textColorSecondary -->
+-    <color name="doc_list_item_subtitle_enabled">#b3ffffff</color>
+-    <color name="doc_list_item_subtitle_disabled">#36ffffff</color>
++    <color name="doc_list_item_subtitle_enabled">@color/raven_fg_2</color>
++    <color name="doc_list_item_subtitle_disabled">@color/raven_fg_3</color>
+ </resources>
+diff --git a/res/values-night/themes.xml b/res/values-night/themes.xml
+index 8ade731..ea1262e 100644
+--- a/res/values-night/themes.xml
++++ b/res/values-night/themes.xml
+@@ -21,14 +21,10 @@
+     <style name="DocumentsTheme" parent="@android:style/Theme.DeviceDefault.DocumentsUI">
+ 
+         <!-- Toolbar -->
+-        <item name="android:actionModeBackground">?android:attr/colorBackground</item>
+         <item name="android:actionBarSize">@dimen/action_bar_size</item>
+ 
+         <!-- Color section -->
+         <item name="android:colorAccent">@color/primary</item>
+-        <item name="android:colorBackground">@color/app_background_color</item>
+-        <item name="android:colorBackgroundFloating">@color/background_floating</item>
+-        <item name="android:colorControlHighlight">@color/ripple_material_dark</item>
+         <item name="android:colorControlActivated">@color/primary</item>
+         <item name="android:colorPrimary">@color/primary</item>
+         <item name="android:colorSecondary">@color/secondary</item>
+@@ -36,12 +32,22 @@
+ 
+         <!-- System | Widget section -->
+         <item name="android:listDivider">@drawable/list_divider</item>
+-        <item name="android:statusBarColor">?android:attr/colorBackground</item>
+-        <item name="android:windowBackground">?android:attr/colorBackground</item>
+-        <item name="android:windowLightStatusBar">false</item>
+-        <item name="android:windowLightNavigationBar">false</item>
+         <item name="android:windowNoTitle">true</item>
+         <item name="android:windowSoftInputMode">stateUnspecified|adjustUnspecified</item>
+ 
++        <!-- RavenOS glass theme (colors from raven_glass.xml), always dark. -->
++        <item name="android:windowBackground">@drawable/raven_backdrop</item>
++        <item name="android:colorBackground">@color/raven_bg</item>
++        <item name="android:colorBackgroundCacheHint">@null</item>
++        <item name="android:colorBackgroundFloating">@color/raven_surface</item>
++        <item name="android:colorControlHighlight">@color/raven_ripple</item>
++        <item name="android:colorControlNormal">@color/raven_fg_2</item>
++        <item name="android:textColorPrimary">@color/raven_text_primary</item>
++        <item name="android:textColorSecondary">@color/raven_text_secondary</item>
++        <item name="android:actionModeBackground">@drawable/raven_action_mode_bg</item>
++        <item name="android:statusBarColor">@color/raven_bg</item>
++        <item name="android:navigationBarColor">@android:color/transparent</item>
++        <item name="android:windowLightStatusBar">false</item>
++        <item name="android:windowLightNavigationBar">false</item>
+     </style>
+ </resources>
+diff --git a/res/values/colors.xml b/res/values/colors.xml
+index e00984a..72ea703 100644
+--- a/res/values/colors.xml
++++ b/res/values/colors.xml
+@@ -15,41 +15,42 @@
+ -->
+ 
+ <resources>
++    <!-- RavenOS: colors below point at raven_glass.xml (the glass theme). -->
+     <!-- This is the window background, but also the background for anything
+          else that needs to manually declare a background matching the "default"
+          app background (e.g. the drawer overlay). -->
+ 
+-    <color name="app_background_color">@android:color/white</color>
+-    <color name="background_floating">@android:color/white</color>
++    <color name="app_background_color">@color/raven_bg</color>
++    <color name="background_floating">@color/raven_surface</color>
+     <color name="nav_bar_translucent">#99FFFFFF</color>
+ 
+-    <color name="primary">#1E88E5</color> <!-- Blue 600 -->
+-    <color name="secondary">#E3F2FD</color> <!-- Blue 50 -->
+-    <color name="hairline">#E0E0E0</color> <!-- Gray 300 -->
++    <color name="primary">@color/raven_accent</color> <!-- Blue 600 -->
++    <color name="secondary">@color/raven_switchbar_on</color> <!-- Blue 50 -->
++    <color name="hairline">@color/raven_glass_stroke</color> <!-- Gray 300 -->
+ 
+-    <color name="chip_background_disable_color">#fff1f3f4</color>
++    <color name="chip_background_disable_color">@color/raven_glass</color>
+     <color name="menu_search_background">@android:color/transparent</color>
+     <color name="item_breadcrumb_background_hovered">#1affffff</color>
+-    <color name="item_drag_shadow_background">@android:color/white</color>
++    <color name="item_drag_shadow_background">@color/raven_surface</color>
+     <color name="item_drag_shadow_container_background">@android:color/transparent</color>
+     <color name="tool_bar_gradient_max">#7f000000</color>
+ 
+-    <color name="band_select_background">#88ffffff</color>
+-    <color name="band_select_border">#44000000</color>
++    <color name="band_select_background">@color/raven_switchbar_on</color>
++    <color name="band_select_border">@color/raven_switchbar_on_stroke</color>
+ 
+     <color name="downloads_icon_background">#ff4688f2</color>
+     <color name="app_icon_background">#ff4688f2</color>
+     <color name="shortcut_foreground">#ff3367d6</color>
+     <color name="shortcut_background">#fff5f5f5</color>
+ 
+-    <color name="briefcase_icon_color">#1A73E8</color>
+-    <color name="cross_profile_button_text_color">#1A73E8</color>
+-    <color name="empty_state_text">#202124</color>
+-    <color name="error_image_color">#757575</color>
++    <color name="briefcase_icon_color">@color/raven_accent</color>
++    <color name="cross_profile_button_text_color">@color/raven_accent</color>
++    <color name="empty_state_text">@color/raven_fg</color>
++    <color name="error_image_color">@color/raven_fg_3</color>
+ 
+-    <color name="tab_indicator_color">#1A73E8</color> <!-- Blue 600 -->
+-    <color name="edge_effect">@android:color/black</color>
++    <color name="tab_indicator_color">@color/raven_accent</color> <!-- Blue 600 -->
++    <color name="edge_effect">@color/raven_fg_3</color>
+ 
+-    <color name="doc_list_item_subtitle_enabled">#5F6368</color> <!-- Gray 700 -->
+-    <color name="doc_list_item_subtitle_disabled">#613c4043</color> <!-- 38% Grey800 -->
++    <color name="doc_list_item_subtitle_enabled">@color/raven_fg_2</color> <!-- Gray 700 -->
++    <color name="doc_list_item_subtitle_disabled">@color/raven_fg_3</color> <!-- 38% Grey800 -->
+ </resources>
+diff --git a/res/values/dimens.xml b/res/values/dimens.xml
+index 07ee695..4138145 100644
+--- a/res/values/dimens.xml
++++ b/res/values/dimens.xml
+@@ -48,8 +48,8 @@
+     <dimen name="list_divider_inset">72dp</dimen>
+     <dimen name="dir_elevation">8dp</dimen>
+     <dimen name="drag_shadow_size">120dp</dimen>
+-    <dimen name="grid_item_elevation">2dp</dimen>
+-    <dimen name="grid_item_radius">2dp</dimen>
++    <dimen name="grid_item_elevation">0dp</dimen>
++    <dimen name="grid_item_radius">@dimen/raven_card_radius</dimen>
+     <dimen name="max_drawer_width">280dp</dimen>
+     <dimen name="briefcase_icon_margin">8dp</dimen>
+     <dimen name="briefcase_icon_size">14dp</dimen>
+@@ -110,7 +110,7 @@
+     <dimen name="apps_row_exit_icon_margin_bottom">6dp</dimen>
+     <dimen name="apps_row_item_text_margin_horizontal">8dp</dimen>
+ 
+-    <dimen name="search_bar_radius">8dp</dimen>
++    <dimen name="search_bar_radius">999dp</dimen>
+     <dimen name="search_bar_background_margin_start">0dp</dimen>
+     <dimen name="search_bar_background_margin_end">0dp</dimen>
+     <dimen name="search_bar_margin">8dp</dimen>
+diff --git a/res/values/raven_glass.xml b/res/values/raven_glass.xml
+new file mode 100644
+index 0000000..debdbb9
+--- /dev/null
++++ b/res/values/raven_glass.xml
+@@ -0,0 +1,44 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- RavenOS glass theme tokens. These are the Midnight Aurora values; the product picks a
++     variant by overlaying this file from vendor/ravenos/themes/<variant>/ (see THEME.md). -->
++<resources>
++    <!-- Backdrop: base fill and three soft glows. -->
++    <color name="raven_bg">#FF070B1D</color>
++    <color name="raven_glow_1">#CC0D9488</color>
++    <color name="raven_glow_2">#AA7C3AED</color>
++    <color name="raven_glow_3">#881E3A8A</color>
++
++    <!-- Text. -->
++    <color name="raven_fg">#FFF0F9FF</color>
++    <color name="raven_fg_2">#FFBAE6FD</color>
++    <color name="raven_fg_3">#FF7FA3C4</color>
++
++    <!-- Glass cards. -->
++    <color name="raven_glass">#12FFFFFF</color>
++    <color name="raven_glass_stroke">#29BAE6FD</color>
++    <color name="raven_separator">#1ABAE6FD</color>
++    <color name="raven_ripple">#1FFFFFFF</color>
++
++    <!-- Accent, and the switch bar when it is on. -->
++    <color name="raven_accent">#FF22D3EE</color>
++    <color name="raven_on_accent">#FF04212A</color>
++    <color name="raven_switchbar_on">#2922D3EE</color>
++    <color name="raven_switchbar_on_stroke">#7322D3EE</color>
++    <color name="raven_tab_selected">#29FFFFFF</color>
++
++    <!-- Solid surface for dialogs: no live blur on Android 11, so these stay opaque. -->
++    <color name="raven_surface">#FF141B33</color>
++
++    <!-- True for light variants: dark status bar icons and dark text. -->
++    <bool name="raven_light_ui">false</bool>
++
++    <dimen name="raven_card_radius">20dp</dimen>
++    <dimen name="raven_dialog_radius">24dp</dimen>
++    <dimen name="raven_content_max_width">760dp</dimen>
++    <dimen name="raven_content_min_side">24dp</dimen>
++    <dimen name="raven_group_gap">16dp</dimen>
++</resources>
+diff --git a/res/values/styles.xml b/res/values/styles.xml
+index 7b90d06..dd9e2a2 100644
+--- a/res/values/styles.xml
++++ b/res/values/styles.xml
+@@ -27,7 +27,7 @@
+     </style>
+ 
+     <style name="CardViewStyle" parent="@style/Widget.MaterialComponents.CardView">
+-        <item name="cardBackgroundColor">@color/app_background_color</item>
++        <item name="cardBackgroundColor">@color/raven_glass</item>
+         <item name="cardPreventCornerOverlap">false</item>
+         <item name="cardCornerRadius">@dimen/grid_item_radius</item>
+         <item name="cardElevation">@dimen/grid_item_elevation</item>
+@@ -51,7 +51,7 @@
+     <style name="BottomSheetDialogStyle" parent="@style/ThemeOverlay.MaterialComponents.BottomSheetDialog">
+         <item name="android:windowIsFloating">false</item>
+         <item name="bottomSheetStyle">@style/BottomSheet</item>
+-        <item name="colorControlHighlight">@color/ripple_material_light</item>
++        <item name="colorControlHighlight">@color/raven_ripple</item>
+     </style>
+ 
+     <style name="BottomSheet" parent="@style/Widget.Design.BottomSheet.Modal">
+diff --git a/res/values/themes.xml b/res/values/themes.xml
+index 59ddec0..0adfcb1 100644
+--- a/res/values/themes.xml
++++ b/res/values/themes.xml
+@@ -22,13 +22,9 @@
+     <style name="DocumentsTheme" parent="@android:style/Theme.DeviceDefault.DocumentsUI">
+ 
+         <item name="android:actionBarSize">@dimen/action_bar_size</item>
+-        <item name="android:actionModeBackground">?android:attr/colorBackground</item>
+ 
+         <!-- Color section -->
+         <item name="android:colorAccent">@color/primary</item>
+-        <item name="android:colorBackground">@android:color/white</item>
+-        <item name="android:colorBackgroundFloating">@color/background_floating</item>
+-        <item name="android:colorControlHighlight">@color/ripple_material_light</item>
+         <item name="android:colorControlActivated">@color/primary</item>
+         <item name="android:colorPrimary">@color/primary</item>
+         <item name="android:colorSecondary">@color/secondary</item>
+@@ -36,16 +32,25 @@
+ 
+         <!-- System | Widget section -->
+         <item name="android:listDivider">@drawable/list_divider</item>
+-        <item name="android:statusBarColor">?android:colorBackground</item>
+-        <item name="android:navigationBarColor">?android:colorBackground</item>
+-        <item name="android:windowBackground">?android:colorBackground</item>
+-        <item name="android:windowLightStatusBar">true</item>
+-        <item name="android:windowLightNavigationBar">true</item>
+         <item name="android:windowSoftInputMode">stateUnspecified|adjustUnspecified</item>
+ 
+         <!-- OEM should not overlay this attr -->
+         <item name="android:windowNoTitle">true</item>
+ 
++        <!-- RavenOS glass theme (colors from raven_glass.xml), always dark. -->
++        <item name="android:windowBackground">@drawable/raven_backdrop</item>
++        <item name="android:colorBackground">@color/raven_bg</item>
++        <item name="android:colorBackgroundCacheHint">@null</item>
++        <item name="android:colorBackgroundFloating">@color/raven_surface</item>
++        <item name="android:colorControlHighlight">@color/raven_ripple</item>
++        <item name="android:colorControlNormal">@color/raven_fg_2</item>
++        <item name="android:textColorPrimary">@color/raven_text_primary</item>
++        <item name="android:textColorSecondary">@color/raven_text_secondary</item>
++        <item name="android:actionModeBackground">@drawable/raven_action_mode_bg</item>
++        <item name="android:statusBarColor">@color/raven_bg</item>
++        <item name="android:navigationBarColor">@android:color/transparent</item>
++        <item name="android:windowLightStatusBar">false</item>
++        <item name="android:windowLightNavigationBar">false</item>
+     </style>
+ 
+     <style name="DocumentsDefaultTheme" parent="@style/Theme.MaterialComponents.DayNight.NoActionBar">
+@@ -73,6 +78,13 @@
+         <item name="materialCardViewStyle">@style/CardViewStyle</item>
+         <item name="materialAlertDialogTheme">@style/MaterialAlertDialogTheme</item>
+         <item name="queryBackground">@color/menu_search_background</item>
++
++        <!-- RavenOS glass theme: Material widgets (dialogs, bottom sheets, buttons). -->
++        <item name="colorSurface">@color/raven_surface</item>
++        <item name="colorOnSurface">@color/raven_fg</item>
++        <item name="colorOnPrimary">@color/raven_on_accent</item>
++        <item name="android:textColorPrimary">@color/raven_text_primary</item>
++        <item name="android:textColorSecondary">@color/raven_text_secondary</item>
+         <item name="snackbarButtonStyle">@style/SnackbarButtonStyle</item>
+     </style>
+ 
+-- 
+2.53.0
+

@@ -1,0 +1,281 @@
+From 75fed98ba7b1ab8ac3937a667aefe5a5bf9cc6f0 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 20:23:54 -0700
+Subject: [PATCH] Settings: Make Legal information work without a browser
+
+- Third-party licenses: HTMLViewer only opens content:// URIs, and only
+  unzips file:// ones, so the file:// link to NOTICE.html.gz found no
+  viewer. Unzip the notice into the cache, which our FileProvider
+  shares, and open that instead.
+- LineageOS legal: when nothing can open ro.lineagelegal.url, show an
+  offline copy of lineageos.org/legal from res/raw in HTMLViewer.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I5f5e8174d283e1168b386da4103d764f9434df27
+---
+ res/raw/lineage_legal.html                    | 113 ++++++++++++++++++
+ src/com/android/settings/LegalSettings.java   |  44 +++++++
+ .../settings/SettingsLicenseActivity.java     |  34 +++++-
+ 3 files changed, 190 insertions(+), 1 deletion(-)
+ create mode 100644 res/raw/lineage_legal.html
+
+diff --git a/res/raw/lineage_legal.html b/res/raw/lineage_legal.html
+new file mode 100644
+index 0000000..d5d0af5
+--- /dev/null
++++ b/res/raw/lineage_legal.html
+@@ -0,0 +1,113 @@
++<!DOCTYPE html>
++<!-- Offline copy of https://lineageos.org/legal (retrieved 2026-11-02) for RavenOS, which ships
++     no browser. Shown by Settings > About tablet > Legal information > LineageOS legal. -->
++<html lang="en">
++<head>
++<meta charset="utf-8">
++<meta name="viewport" content="width=device-width, initial-scale=1">
++<title>LineageOS legal</title>
++<style>
++  :root { color-scheme: dark; }
++  body { margin: 0; background: #070b1d; color: #f0f9ff;
++         font-family: sans-serif; font-size: 16px; line-height: 1.55; }
++  main { max-width: 720px; margin: 0 auto; padding: 24px 20px 48px; }
++  h1 { font-weight: 400; font-size: 28px; margin: 0 0 8px; }
++  h2 { font-weight: 500; font-size: 21px; margin: 32px 0 8px; }
++  h3 { font-size: 13px; letter-spacing: 0.06em; color: #7fa3c4; margin: 24px 0 6px; }
++  p, li { color: #d7ecfb; }
++  a { color: #22d3ee; }
++  .source { color: #7fa3c4; font-size: 13px; margin: 0 0 24px; }
++</style>
++</head>
++<body>
++<main>
++<p class="source">Offline copy of <a href="https://lineageos.org/legal">lineageos.org/legal</a>, retrieved 2 November 2026.</p>
++<h1>Legal</h1>
++    </div>
++  </div>
++  <div class="container">
++    <div class="entry">
++      <h2 id="terms-of-service">Terms of Service</h2>
++
++<h3 id="disclaimer">DISCLAIMER</h3>
++<p>All information and files — both in source and compiled form — are provided on an as is basis. No guarantees or warranties are given or implied. The user assumes all risks of any damages that may occur, including but not limited to loss of data, damages to hardware, or loss of business profits. Please use at your own risk. Note that unless explicitly allowed by the warranty covering your device, it should be assumed that any warranty accompanying your device will be voided if you tamper with either the system software or the hardware.</p>
++
++<h3 id="terms-of-use">TERMS OF USE</h3>
++<p>Certain images, logos, pictures, and other works originating with organizations other than LineageOS may be or are the trademarks and/or servicemarks of those other organizations and are subject to the laws of their registered countries. LineageOS’ usage constitutes a ‘fair use’ of any such copyrighted material as provided for in section 107 of the US Copyright Law. If you wish to use copyrighted material from this site for purposes of your own that go beyond ‘fair use’, you must obtain permission from the copyright owner. Requests for removal of copyright material may be sent to <a href="mailto:legal@lineageos.org">legal@lineageos.org</a>.</p>
++
++<h2 id="privacy-policy">Privacy Policy</h2>
++<p>Your privacy is important to LineageOS. Our Privacy Policy explains how we collect, use, disclose, transfer, and store your information. Please take a moment to familiarize yourself with our privacy practices.</p>
++
++<p>LineageOS provides an after-market operating system and applications for various mobile devices.</p>
++
++<h3 id="information-we-have">INFORMATION WE HAVE</h3>
++<p>Certain information (e.g. a device unique anonymized ID, device model, etc.) is transmitted to us solely for the purpose of measuring non-personally identifiable installation metrics. Unless otherwise stated below, this information is not used for any other purpose.</p>
++
++<ol>
++  <li>Information we store from the device, when opted-in for:
++    <ul>
++      <li>The unique anonymous ID of the device (this ID changes upon device factory reset)</li>
++      <li>The device model</li>
++      <li>The version(s) of our software installed on the device</li>
++      <li>The country from which the device registered</li>
++      <li>The wireless carrier(s) to which the device is actively registered</li>
++    </ul>
++  </li>
++  <li>Information we store from the contributions to our code review platform (Gerrit)
++    <ul>
++      <li>Email addresses for registration and to facilitate review</li>
++      <li>Signed Contributor License Agreements (CLA)</li>
++      <li>IP addresses, SSH activity, and API access may be logged for rate limiting or to prevent abuse</li>
++    </ul>
++  </li>
++  <li>Information we store for cursory services
++    <ul>
++      <li>Email addresses for registration to wiki and bug tracking software</li>
++      <li>IP addresses may be logged for rate limiting or to prevent abuse</li>
++    </ul>
++  </li>
++  <li>Additional information you may provide us
++    <ul>
++      <li>Bug reports submitted to assist in providing support may contain Personally Identifiable Information (PII). While we will do our best to prevent the collection of this information from processes within our control, your usage and submission of this data may contain PII and you should take steps to sanitize and validate this data prior to submission.</li>
++    </ul>
++  </li>
++</ol>
++
++<h3 id="opt-out">OPT-OUT</h3>
++<p>You may opt-out of LineageOS device statistics via the Privacy menu in Settings on the device.</p>
++
++<h3 id="web">WEB</h3>
++<p>As is true of most websites, we gather some information automatically and store it in log files. This information includes Internet Protocol (IP) addresses, browser type (and version) and language, Internet service provider (ISP), referring and exit pages, operating system, date/time stamp, and clickstream data.</p>
++
++<p>We may collect information regarding user activities on our website and from our other products and services. This information is aggregated and used to help us provide more useful information to our users to understand which parts of our website, products, and services are of most interest, and for general system diagnostics. Aggregated data is considered non-personal information for the purposes of this Privacy Policy.</p>
++
++<p>We do not knowingly collect personal information from children under 13 except where a parent has set up an account for their child and provided LineageOS with verified parental consent. If we learn that we have collected the personal information of a child under 13 without first receiving verifiable parental consent we will take steps to delete the information as soon as possible.</p>
++
++<h3 id="information-we-may-share">INFORMATION WE MAY SHARE</h3>
++<p>We do not share your information with companies, organizations, or individuals outside of LineageOS unless one of the following circumstances applies:</p>
++
++<ul>
++  <li>With your consent (Submission of bug reports to our bug tracking platform is considered consent.)</li>
++  <li>When legally required.</li>
++</ul>
++
++<p>When using our code review platform (Gerrit), you agree that:</p>
++
++<ul>
++  <li>During account creation, we collect your name, username, and email from a third party. This data is immediately made public.</li>
++  <li>Your name and email address will become embedded and part of the code, which will be publicly available. You understand that the removal of this information would be impermissibly destructive to the project and the interests of all who contribute, utilize, and benefit from it. You waive any right to request erasure, removal, or rectification of this information under any applicable privacy or other law and understand that providing this information is required to contribute to the project.</li>
++</ul>
++
++<p>We will share the information we have with entities outside of LineageOS if we have a good faith belief that access, use, preservation, or disclosure of the information is necessary to:</p>
++
++<ul>
++  <li>meet any applicable law, regulation, legal process or enforceable governmental request.</li>
++  <li>enforce applicable Terms of Service, including investigation of potential violations.</li>
++  <li>detect, prevent, or otherwise address fraud, security, or technical issues.</li>
++  <li>protect against harm to the rights, property, or safety of LineageOS, our users, or the public as required or permitted by law.</li>
++</ul>
++
++<p>We will update this privacy policy as needed so that it is current, accurate, and as clear as possible.</p>
++</main>
++</body>
++</html>
+diff --git a/src/com/android/settings/LegalSettings.java b/src/com/android/settings/LegalSettings.java
+index 93abf94..5d61ec4 100644
+--- a/src/com/android/settings/LegalSettings.java
++++ b/src/com/android/settings/LegalSettings.java
+@@ -17,16 +17,25 @@
+ package com.android.settings;
+ 
+ import android.app.settings.SettingsEnums;
++import android.content.ActivityNotFoundException;
++import android.content.Context;
+ import android.content.Intent;
+ import android.net.Uri;
+ import android.os.SystemProperties;
+ import android.util.Log;
++import androidx.core.content.FileProvider;
+ import androidx.preference.Preference;
+ 
+ import com.android.settings.dashboard.DashboardFragment;
+ import com.android.settings.search.BaseSearchIndexProvider;
+ import com.android.settingslib.search.SearchIndexable;
+ 
++import java.io.File;
++import java.io.FileOutputStream;
++import java.io.IOException;
++import java.io.InputStream;
++import java.io.OutputStream;
++
+ @SearchIndexable
+ public class LegalSettings extends DashboardFragment {
+ 
+@@ -52,6 +61,11 @@ public class LegalSettings extends DashboardFragment {
+             final Intent intent = new Intent(Intent.ACTION_VIEW);
+             intent.addCategory(Intent.CATEGORY_DEFAULT);
+             intent.setData(Uri.parse(userLineageLicenseUrl));
++            if (intent.resolveActivity(getContext().getPackageManager()) == null) {
++                // RavenOS ships no browser, so show the copy bundled in res/raw instead.
++                showOfflineLineageLicense();
++                return true;
++            }
+             try {
+                 startActivity(intent);
+             } catch (Exception e) {
+@@ -61,6 +75,36 @@ public class LegalSettings extends DashboardFragment {
+         return super.onPreferenceTreeClick(preference);
+     }
+ 
++    private void showOfflineLineageLicense() {
++        final Context context = getContext();
++        // HTMLViewer only opens content:// URIs, so share the copy through our FileProvider.
++        final File file = new File(context.getCacheDir(), "lineage_legal.html");
++        try (InputStream in = context.getResources().openRawResource(R.raw.lineage_legal);
++                OutputStream out = new FileOutputStream(file)) {
++            final byte[] buffer = new byte[8 * 1024];
++            int count;
++            while ((count = in.read(buffer)) > 0) {
++                out.write(buffer, 0, count);
++            }
++        } catch (IOException e) {
++            Log.e(TAG, "Unable to copy the LineageOS legal page", e);
++            return;
++        }
++        final Intent intent = new Intent(Intent.ACTION_VIEW);
++        intent.setDataAndType(
++                FileProvider.getUriForFile(context, Utils.FILE_PROVIDER_AUTHORITY, file),
++                "text/html");
++        intent.putExtra(Intent.EXTRA_TITLE, getString(R.string.lineagelicense_title));
++        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
++        intent.addCategory(Intent.CATEGORY_DEFAULT);
++        intent.setPackage("com.android.htmlviewer");
++        try {
++            startActivity(intent);
++        } catch (ActivityNotFoundException e) {
++            Log.e(TAG, "Unable to show the LineageOS legal page", e);
++        }
++    }
++
+     @Override
+     protected int getPreferenceScreenResId() {
+         return R.xml.about_legal;
+diff --git a/src/com/android/settings/SettingsLicenseActivity.java b/src/com/android/settings/SettingsLicenseActivity.java
+index 57b1f5c..53ecffd 100644
+--- a/src/com/android/settings/SettingsLicenseActivity.java
++++ b/src/com/android/settings/SettingsLicenseActivity.java
+@@ -33,6 +33,12 @@ import androidx.loader.content.Loader;
+ import com.android.settingslib.license.LicenseHtmlLoaderCompat;
+ 
+ import java.io.File;
++import java.io.FileInputStream;
++import java.io.FileOutputStream;
++import java.io.IOException;
++import java.io.InputStream;
++import java.io.OutputStream;
++import java.util.zip.GZIPInputStream;
+ 
+ /**
+  * The "dialog" that shows from "License" in the Settings app.
+@@ -51,7 +57,16 @@ public class SettingsLicenseActivity extends FragmentActivity implements
+ 
+         File file = new File(LICENSE_PATH);
+         if (isFileValid(file)) {
+-            showHtmlFromUri(Uri.fromFile(file));
++            // HTMLViewer only opens content:// URIs, and only unzips file:// ones, so unzip the
++            // notice into the cache our FileProvider shares and hand it over from there.
++            new Thread(() -> {
++                final File html = unzipLicense(file);
++                runOnUiThread(() -> {
++                    if (!isFinishing() && !isDestroyed()) {
++                        showGeneratedHtmlFile(html);
++                    }
++                });
++            }).start();
+         } else {
+             showHtmlFromDefaultXmlFiles();
+         }
+@@ -71,6 +86,23 @@ public class SettingsLicenseActivity extends FragmentActivity implements
+     public void onLoaderReset(Loader<File> loader) {
+     }
+ 
++    private File unzipLicense(File gzipFile) {
++        final File htmlFile = new File(getCacheDir(), "NOTICE.html");
++        try (InputStream in = new GZIPInputStream(new FileInputStream(gzipFile));
++                OutputStream out = new FileOutputStream(htmlFile)) {
++            final byte[] buffer = new byte[64 * 1024];
++            int count;
++            while ((count = in.read(buffer)) > 0) {
++                out.write(buffer, 0, count);
++            }
++            return htmlFile;
++        } catch (IOException e) {
++            Log.e(TAG, "Failed to unzip " + gzipFile, e);
++            htmlFile.delete();
++            return null;
++        }
++    }
++
+     private void showHtmlFromDefaultXmlFiles() {
+         getSupportLoaderManager().initLoader(LOADER_ID_LICENSE_HTML_LOADER, Bundle.EMPTY, this);
+     }
+-- 
+2.53.0
+

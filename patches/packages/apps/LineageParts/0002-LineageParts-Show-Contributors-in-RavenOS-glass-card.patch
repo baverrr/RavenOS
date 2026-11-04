@@ -1,0 +1,140 @@
+From 286a8f16f973dd724466d8ef29abc1a659b9651f Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Mon, 2 Nov 2026 20:23:54 -0700
+Subject: [PATCH] LineageParts: Show Contributors in RavenOS glass cards
+
+- Draw the contributors cloud as a rounded glass card in the same
+  centred column as the Settings cards, clipped so a zoomed cloud stays
+  inside it.
+- Show search results in a matching glass card with hairline dividers.
+- Highlight the selected name in the theme's text color instead of a
+  fixed red.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I3995692f3f3860393376f5f33f80095a0a9b037f
+---
+ res/drawable/raven_glass_card.xml                  | 11 +++++++++++
+ res/layout/contributors_view.xml                   | 14 +++++++++++++-
+ res/values-w900dp/raven_contributors.xml           |  9 +++++++++
+ res/values/colors.xml                              |  3 ++-
+ res/values/raven_contributors.xml                  | 10 ++++++++++
+ .../contributors/ContributorsCloudFragment.java    |  3 +++
+ 6 files changed, 48 insertions(+), 2 deletions(-)
+ create mode 100644 res/drawable/raven_glass_card.xml
+ create mode 100644 res/values-w900dp/raven_contributors.xml
+ create mode 100644 res/values/raven_contributors.xml
+
+diff --git a/res/drawable/raven_glass_card.xml b/res/drawable/raven_glass_card.xml
+new file mode 100644
+index 0000000..9d29eb4
+--- /dev/null
++++ b/res/drawable/raven_glass_card.xml
+@@ -0,0 +1,11 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Glass card for the contributors cloud and its search results. -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android">
++    <solid android:color="@color/raven_glass" />
++    <stroke android:width="1dp" android:color="@color/raven_glass_stroke" />
++    <corners android:radius="@dimen/raven_card_radius" />
++</shape>
+diff --git a/res/layout/contributors_view.xml b/res/layout/contributors_view.xml
+index 1c6a1ee..1bd2134 100644
+--- a/res/layout/contributors_view.xml
++++ b/res/layout/contributors_view.xml
+@@ -18,10 +18,16 @@
+     android:layout_width="match_parent"
+     android:layout_height="match_parent">
+ 
++    <!-- RavenOS: the cloud is a glass card in the Settings column. The fragment clips it to
++         its corners so a zoomed cloud stays inside. -->
+     <ImageView
+         android:id="@+id/contributors_cloud_image"
+         android:layout_width="match_parent"
+         android:layout_height="match_parent"
++        android:layout_marginStart="@dimen/raven_side_margin"
++        android:layout_marginEnd="@dimen/raven_side_margin"
++        android:layout_marginBottom="16dp"
++        android:background="@drawable/raven_glass_card"
+         android:contentDescription="@string/contributors_cloud_fragment_title"
+         android:visibility="gone"/>
+ 
+@@ -75,6 +81,12 @@
+     <ListView
+         android:id="@+id/contributors_cloud_search_results"
+         android:layout_width="match_parent"
+-        android:layout_height="match_parent"
++        android:layout_height="wrap_content"
++        android:layout_marginStart="@dimen/raven_side_margin"
++        android:layout_marginEnd="@dimen/raven_side_margin"
++        android:layout_marginBottom="16dp"
++        android:background="@drawable/raven_glass_card"
++        android:divider="@color/raven_separator"
++        android:dividerHeight="1dp"
+         android:visibility="gone" />
+ </FrameLayout>
+diff --git a/res/values-w900dp/raven_contributors.xml b/res/values-w900dp/raven_contributors.xml
+new file mode 100644
+index 0000000..c110fba
+--- /dev/null
++++ b/res/values-w900dp/raven_contributors.xml
+@@ -0,0 +1,9 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<resources>
++    <!-- (961dp Echo Show 8 width - 760dp column) / 2 -->
++    <dimen name="raven_side_margin">100dp</dimen>
++</resources>
+diff --git a/res/values/colors.xml b/res/values/colors.xml
+index 6210b9e..08f1d40 100644
+--- a/res/values/colors.xml
++++ b/res/values/colors.xml
+@@ -24,7 +24,8 @@
+     <color name="fab_shape">?android:attr/colorAccent</color>
+ 
+     <!-- Contributors -->
+-    <color name="contributors_cloud_selected_color">#ff5252</color>
++    <!-- RavenOS: the selected name stands out in the light text color against the accent. -->
++    <color name="contributors_cloud_selected_color">@color/raven_fg</color>
+ 
+     <color name="weather_settings_icon_tint">#B4B9BA</color>
+ 
+diff --git a/res/values/raven_contributors.xml b/res/values/raven_contributors.xml
+new file mode 100644
+index 0000000..a51a035
+--- /dev/null
++++ b/res/values/raven_contributors.xml
+@@ -0,0 +1,10 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<resources>
++    <!-- Side margin that centres the contributors card in the same column as the Settings
++         cards. values-w900dp widens it. -->
++    <dimen name="raven_side_margin">16dp</dimen>
++</resources>
+diff --git a/src/org/lineageos/lineageparts/contributors/ContributorsCloudFragment.java b/src/org/lineageos/lineageparts/contributors/ContributorsCloudFragment.java
+index c0fe5b8..4175ded 100644
+--- a/src/org/lineageos/lineageparts/contributors/ContributorsCloudFragment.java
++++ b/src/org/lineageos/lineageparts/contributors/ContributorsCloudFragment.java
+@@ -317,6 +317,9 @@ public class ContributorsCloudFragment extends Fragment implements SearchView.On
+         mViewController.setMediumScale(7f);
+ 
+         mSearchResults = (ListView) v.findViewById(R.id.contributors_cloud_search_results);
++        // RavenOS: keep the zoomed cloud and the result rows inside their rounded glass cards.
++        mImageView.setClipToOutline(true);
++        mSearchResults.setClipToOutline(true);
+         mSearchAdapter = new ContributorsAdapter(getActivity());
+         mSearchResults.setAdapter(mSearchAdapter);
+         mSearchResults.setOnItemClickListener(new OnItemClickListener() {
+-- 
+2.53.0
+

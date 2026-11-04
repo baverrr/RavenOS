@@ -1,0 +1,78 @@
+From 9b44e43167a034f0ff6f3da906e61ab3f609cd02 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 12:55:35 -0700
+Subject: [PATCH] Settings: Put entity headers on the backdrop above the glass
+ cards
+
+SettingsLib's EntityHeader style filled the header with colorPrimaryDark,
+which on the glass theme is an opaque block over the top of the first
+card, so pages like About tablet showed a dark rectangle with a card
+edge running beside it. Override the style with no fill, and leave
+LayoutPreference headers out of the glass cards, so the card starts
+below the header with its rounded top and full outline.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: If1fc89c77c498d3a39a4a8d3c9c7af50b254a41b
+---
+ res/values/styles.xml                                |  9 +++++++++
+ .../settings/widget/GlassGroupDecoration.java        | 12 ++++++++++--
+ 2 files changed, 19 insertions(+), 2 deletions(-)
+
+diff --git a/res/values/styles.xml b/res/values/styles.xml
+index 7d8895e..44b2212 100644
+--- a/res/values/styles.xml
++++ b/res/values/styles.xml
+@@ -806,4 +806,13 @@
+            parent="@*android:style/TextAppearance.DeviceDefault.Subhead">
+         <item name="android:fontFamily">@*android:string/config_headlineFontFamily</item>
+     </style>
++
++    <!-- RavenOS: replaces SettingsLib's EntityHeader, which filled the header with
++         colorPrimaryDark. The header sits on the glass backdrop above the cards. -->
++    <style name="EntityHeader">
++        <item name="android:background">@android:color/transparent</item>
++        <item name="android:paddingTop">24dp</item>
++        <item name="android:paddingBottom">16dp</item>
++        <item name="android:paddingEnd">16dp</item>
++    </style>
+ </resources>
+diff --git a/src/com/android/settings/widget/GlassGroupDecoration.java b/src/com/android/settings/widget/GlassGroupDecoration.java
+index 8b1935e..0028a04 100644
+--- a/src/com/android/settings/widget/GlassGroupDecoration.java
++++ b/src/com/android/settings/widget/GlassGroupDecoration.java
+@@ -25,6 +25,7 @@ import androidx.recyclerview.widget.RecyclerView;
+ 
+ import com.android.settings.R;
+ import com.android.settingslib.widget.FooterPreference;
++import com.android.settingslib.widget.LayoutPreference;
+ 
+ import java.util.Collections;
+ import java.util.Set;
+@@ -32,7 +33,7 @@ import java.util.Set;
+ /**
+  * Draws each run of preferences between category headers as one rounded glass card, with
+  * hairline separators inset to the title, and keeps the list in a centred column on wide
+- * screens. Category titles and footers sit outside the cards.
++ * screens. Category titles, footers and entity headers sit outside the cards.
+  *
+  * <p>The row that has focus from a remote or keyboard gets an accent outline, rounded like
+  * the card at the group's ends, in place of the stock square tint.
+@@ -251,7 +252,14 @@ public class GlassGroupDecoration extends RecyclerView.ItemDecoration {
+ 
+     private static boolean isCard(Preference preference) {
+         return !(preference instanceof PreferenceCategory)
+-                && !(preference instanceof FooterPreference);
++                && !(preference instanceof FooterPreference)
++                && !isHeader(preference);
++    }
++
++    /** Entity headers (the avatar or app icon with a title) sit on the backdrop. */
++    private static boolean isHeader(Preference preference) {
++        final String key = preference.getKey();
++        return preference instanceof LayoutPreference && key != null && key.contains("header");
+     }
+ 
+     private static Preference getItem(RecyclerView parent, int position) {
+-- 
+2.53.0
+

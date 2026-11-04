@@ -1,0 +1,357 @@
+<title>RavenOS Glass Theme</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one dark column; plan first (two tracks side by side), then a 2-up grid of device mockups. */
+:root {
+  color-scheme: dark;
+  --page: #0b1120;
+  --panel: #131b2e;
+  --line: #24304a;
+  --ink: #eef2f8;
+  --ink-2: #a9b4c7;
+  --ink-3: #74819a;
+  --amber: #f59e0b;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+body { background: var(--page); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 40px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 48px; }
+h1, h2, h3 { text-wrap: balance; margin: 0; font-weight: 500; }
+h1 { font-size: clamp(28px, 4vw, 40px); font-weight: 300; letter-spacing: -0.01em; }
+h2 { font-size: 22px; font-weight: 400; }
+h3 { font-size: 15px; font-weight: 600; }
+p { margin: 0; }
+.eyebrow { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--amber); }
+.lede { color: var(--ink-2); max-width: 68ch; }
+header { display: grid; gap: 12px; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.fact { font-family: var(--mono); font-size: 12px; color: var(--ink-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; }
+
+/* Plan */
+.plan { display: grid; gap: 20px; }
+.tracks { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.track { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 20px 22px; display: grid; gap: 12px; align-content: start; min-width: 0; }
+.track .where { font-family: var(--mono); font-size: 12px; color: var(--ink-3); overflow-wrap: anywhere; }
+.track ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--ink-2); }
+.track li b { color: var(--ink); font-weight: 500; }
+code { font-family: var(--mono); font-size: 0.88em; color: var(--ink); background: #1b2540; border-radius: 5px; padding: 1px 5px; overflow-wrap: anywhere; }
+.limits { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+.limit { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 6px; color: var(--ink-2); font-size: 14px; }
+.limit h3 { color: var(--ink); }
+
+/* Variants */
+.variants-head { display: grid; gap: 8px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 480px), 1fr)); gap: 28px 24px; }
+.variant { display: grid; gap: 12px; align-content: start; min-width: 0; }
+.vmeta { display: grid; gap: 4px; }
+.vtitle { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.vnum { font-family: var(--mono); font-size: 13px; color: var(--ink-3); }
+.vname { font-size: 18px; font-weight: 500; }
+.badge { font-family: var(--mono); font-size: 11px; color: #1a1205; background: var(--amber); border-radius: 999px; padding: 1px 8px; }
+.vdesc { color: var(--ink-2); font-size: 14px; }
+.swatches { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.sw { width: 18px; height: 18px; border-radius: 6px; border: 1px solid #ffffff22; }
+.swl { font-family: var(--mono); font-size: 11.5px; color: var(--ink-3); margin-left: 4px; }
+.notes { font-size: 13px; color: var(--ink-3); }
+
+/* Device mockup — everything inside scales with the screen width (cqw). */
+.device { background: #05070c; border-radius: 22px; padding: 12px; box-shadow: 0 0 0 1px #1e2638, 0 18px 40px -20px #000; max-width: 100%; }
+.screen {
+  container-type: inline-size; position: relative; aspect-ratio: 16 / 10; width: 100%; border-radius: 10px; overflow: hidden;
+  background: var(--v-bg); color: var(--v-fg); font-family: var(--v-font, var(--sans));
+}
+.status { position: absolute; inset: 0 0 auto; height: 4.2cqw; display: flex; justify-content: space-between; align-items: center; padding: 0 2.4cqw; font-size: 1.5cqw; color: var(--v-fg2); }
+.app { position: absolute; top: 4.2cqw; left: 0; right: 0; bottom: 41%; display: grid; grid-template-columns: 1fr; justify-items: center; overflow: hidden; }
+.col { width: 64%; display: grid; gap: 1.3cqw; align-content: start; padding-top: 0.6cqw; }
+.bar { display: flex; align-items: center; gap: 1.6cqw; font-size: 2.6cqw; font-weight: var(--v-title-w, 500); letter-spacing: -0.01em; }
+.bar svg { width: 2.4cqw; height: 2.4cqw; }
+.switchbar { display: flex; justify-content: space-between; align-items: center; padding: 1.2cqw 1.8cqw; border-radius: var(--v-r); background: var(--v-on-glass); border: 1px solid var(--v-on-stroke); font-size: 1.75cqw; font-weight: 500; }
+.toggle { width: 4.6cqw; height: 2.6cqw; border-radius: 99px; background: var(--v-accent); position: relative; flex: none; }
+.toggle::after { content: ""; position: absolute; right: 0.3cqw; top: 0.3cqw; width: 2cqw; height: 2cqw; border-radius: 50%; background: var(--v-thumb, #fff); }
+.cat { font-size: 1.3cqw; letter-spacing: 0.06em; text-transform: uppercase; color: var(--v-fg3); padding-left: 1.8cqw; margin-bottom: -0.6cqw; }
+.group { border-radius: var(--v-r); background: var(--v-glass); border: 1px solid var(--v-stroke); box-shadow: inset 0 1px 0 var(--v-hi); overflow: hidden; }
+.row { display: flex; align-items: center; gap: 1.4cqw; padding: 1.15cqw 1.8cqw; font-size: 1.7cqw; position: relative; }
+.row + .row::before { content: ""; position: absolute; top: 0; left: 5.6cqw; right: 0; height: 1px; background: var(--v-sep); }
+.row .ico { width: 2.6cqw; height: 2.6cqw; border-radius: 0.8cqw; display: grid; place-items: center; background: var(--v-icon-bg); color: var(--v-icon-fg); flex: none; }
+.row .ico svg { width: 1.7cqw; height: 1.7cqw; }
+.row .sub { color: var(--v-fg2); font-size: 1.35cqw; }
+.row .grow { flex: 1; min-width: 0; display: grid; }
+.row .tail { color: var(--v-fg3); font-size: 1.4cqw; }
+.row.sel { background: var(--v-sel); }
+
+/* Keyboard */
+.kbd { position: absolute; left: 0; right: 0; bottom: 0; height: 41%; background: var(--v-kbd-bg); border-top: 1px solid var(--v-kbd-line); padding: 0.8cqw 1.4cqw 1.2cqw; display: grid; grid-template-rows: 3.4cqw 1fr; gap: 0.6cqw; }
+.sugg { display: flex; justify-content: center; gap: 1.2cqw; align-items: center; font-size: 1.6cqw; color: var(--v-fg2); }
+.chip { padding: 0.35cqw 1.6cqw; border-radius: 99px; background: var(--v-chip); border: 1px solid var(--v-chip-stroke); }
+.chip.main { color: var(--v-fg); font-weight: 500; }
+.keys { display: grid; grid-template-rows: repeat(4, 1fr); gap: var(--v-gap, 0.75cqw); }
+.krow { display: flex; gap: var(--v-gap, 0.75cqw); justify-content: center; }
+.k { flex: 1 1 0; max-width: 8.2cqw; display: grid; place-items: center; border-radius: var(--v-kr); background: var(--v-key); border: 1px solid var(--v-key-stroke); box-shadow: var(--v-key-shadow, none); font-size: 2cqw; color: var(--v-key-fg); }
+.k.fn { background: var(--v-keyfn); color: var(--v-fg2); font-size: 1.5cqw; }
+.k.w15 { flex-grow: 1.5; max-width: 12.3cqw; }
+.k.w2 { flex-grow: 2; max-width: 16.4cqw; }
+.k.space { flex-grow: 5.2; max-width: 44cqw; font-size: 1.3cqw; color: var(--v-fg3); }
+.k.enter { flex-grow: 1.7; max-width: 14cqw; background: var(--v-accent); color: var(--v-on-accent); border-color: transparent; font-size: 1.5cqw; font-weight: 500; }
+.k.press { background: var(--v-key-press); }
+.k svg { width: 2cqw; height: 2cqw; }
+.k.press { position: relative; }
+.k.press::after { content: attr(data-c); position: absolute; left: 50%; bottom: 55%; transform: translateX(-50%); width: 5.4cqw; height: 7.4cqw; box-sizing: border-box; border-radius: 1.2cqw; background: var(--v-preview); border: 1px solid var(--v-stroke); display: grid; place-items: start center; padding-top: 0.8cqw; font-size: 3cqw; color: var(--v-fg); box-shadow: 0 1cqw 2cqw -1cqw #0008; pointer-events: none; }
+
+/* Night variant: split label */
+.split-note { position: absolute; top: 4.6cqw; right: 1.6cqw; font-size: 1.2cqw; font-family: var(--mono); color: var(--v-fg3); border: 1px solid var(--v-stroke); border-radius: 99px; padding: 0.2cqw 1cqw; }
+
+.foot { color: var(--ink-3); font-size: 13.5px; border-top: 1px solid var(--line); padding-top: 16px; }
+@media (max-width: 560px) { .device { padding: 7px; border-radius: 14px; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">RavenOS · Echo Show 8 · LineageOS 18.1</div>
+    <h1>Glass theme for Settings and the keyboard</h1>
+    <p class="lede">One look across the Settings app, all its sub-pages and tabs, and the on-screen keyboard, modelled on Apple Home: a soft colored backdrop, frosted grouped cards, no hard bars or dividers between the toolbar, content and keyboard. Each mockup below shows the Wi-Fi page with the keyboard open, so you can judge both together.</p>
+    <div class="facts">
+      <span class="fact">1280 × 800 · 213 dpi · 961 × 601 dp</span>
+      <span class="fact">Android 11 (API 30)</span>
+      <span class="fact">Matches RavenHome: slate + amber, IBM Plex</span>
+    </div>
+  </header>
+
+  <section class="plan">
+    <div class="variants-head">
+      <div class="eyebrow">The plan</div>
+      <h2>Two patches, one set of colors</h2>
+      <p class="lede">Both changes go in as <code>git am</code> patches under <code>patches/</code>, the same way your other Settings and Camera fixes are carried, so <code>repo sync</code> and <code>patches/apply.sh</code> keep working.</p>
+    </div>
+    <div class="tracks">
+      <div class="track">
+        <h3>Settings</h3>
+        <div class="where">patches/packages/apps/Settings/0002-Settings-RavenOS-glass-theme.patch</div>
+        <ol>
+          <li><b>Always-dark base.</b> <code>Theme.SettingsBase</code> moves to the dark <code>Theme.DeviceDefault</code> parent, so Settings stays glass whatever the system dark-mode switch says. Tab and dialog themes lose their DayNight parents for the same reason.</li>
+          <li><b>Backdrop.</b> A layer-list of soft radial gradients becomes <code>windowBackground</code> for home and every sub-page. Status bar, nav bar and action bar go transparent, and the homepage's opaque <code>main_content</code> fill comes out, so one backdrop runs edge to edge.</li>
+          <li><b>Grouped glass cards.</b> A new <code>GlassGroupDecoration</code> on the RecyclerView in <code>SettingsPreferenceFragment</code> draws one rounded frosted card per preference group, with hairline separators inset past the icon. Category titles and footers sit outside the cards, as in iOS. The column is centred and capped at 760 dp so rows don't stretch across the 961 dp-wide screen.</li>
+          <li><b>Search bar and switch bar.</b> The homepage search card becomes a glass pill with a 1 dp stroke and no shadow. The <code>SwitchBar</code> ("Use Wi-Fi") becomes a rounded glass card that tints amber when on, instead of a solid full-width strip.</li>
+          <li><b>Tabs.</b> The Personal/Work tabs (<code>profile_select_tablayout</code>) and Wi-Fi calling tabs become a segmented pill control: a glass track with a lighter sliding pill.</li>
+          <li><b>Dialogs.</b> Opaque slate surface, 24 dp corners, amber buttons. These stay solid on purpose: without a live blur, see-through dialogs are hard to read.</li>
+        </ol>
+      </div>
+      <div class="track">
+        <h3>Keyboard (LatinIME)</h3>
+        <div class="where">patches/packages/inputmethods/LatinIME/0001-LatinIME-Add-RavenOS-glass-keyboard-theme.patch</div>
+        <ol>
+          <li><b>New theme entry.</b> Add <code>THEME_ID_RAVEN_GLASS = 6</code> ("RavenGlass") to <code>KeyboardTheme.java</code> and make it <code>DEFAULT_THEME_ID</code>. Light, Dark and Auto stay selectable in the keyboard's own settings.</li>
+          <li><b>Theme styles.</b> A new <code>themes-raven.xml</code> on top of the LXX dark styles sets key text, hint letters, the suggestion strip, the key-press preview bubble and the long-press panel.</li>
+          <li><b>Keys as glass.</b> Shape drawables replace the 9-patch key backgrounds: rounded frosted letter keys, a slightly darker tint for shift, delete and <code>?123</code>, an accent-filled enter key, a pill spacebar and a brighter pressed state.</li>
+          <li><b>Continuous backdrop.</b> The keyboard background uses the bottom band of the same gradient, so the keyboard reads as part of the screen behind it rather than a separate slab.</li>
+          <li><b>Tablet spacing.</b> Slightly wider key gaps on the 600 dp-plus layout so each key reads as its own glass tile.</li>
+        </ol>
+      </div>
+      <div class="track">
+        <h3>Shared colors, build and check</h3>
+        <div class="where">vendor/ravenos/THEME.md · build-ravenos.sh</div>
+        <ol>
+          <li><b>One token list.</b> Backdrop stops, glass fill, stroke, text levels and accent are written once in <code>vendor/ravenos/THEME.md</code>, and both patches use exactly those values (prefixed <code>raven_</code>, like RavenHome's <code>colors.xml</code>).</li>
+          <li><b>Build only what changed.</b> <code>build-ravenos.sh Settings</code> and <code>build-ravenos.sh LatinIME</code>, then push both APKs over ADB (port 5555) and restart them, with no full ROM flash needed while iterating.</li>
+          <li><b>Check on the device.</b> Screenshots with <code>adb exec-out screencap</code> of the home page, Wi-Fi with keyboard open, an app-info page, a dialog and the tabs, plus a text-contrast check on every glass surface (4.5:1 minimum).</li>
+          <li><b>Ship.</b> Export both commits into <code>patches/</code>, then a full <code>bacon</code> build for the flashable zip.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="limits">
+      <div class="limit"><h3>No live blur on Android 11</h3><p>Real backdrop blur (<code>RenderEffect</code>, window blur-behind) arrived in Android 12. Here the frost is baked into the gradient and the cards are translucent over it. That matches the Apple Home look well because the backdrop is already soft, but content won't blur as it scrolls under the toolbar.</p></div>
+      <div class="limit"><h3>Settings ignores the dark-mode switch</h3><p>Every variant except Frost is dark-only and Settings follows it regardless of the system setting. Variant 10 is the exception: it changes with RavenHome's night mode.</p></div>
+      <div class="limit"><h3>Screens that keep their own look</h3><p>Setup-wizard pages, fingerprint and lock screens, and slice panels use their own themes and stay stock. They can follow later if you want them to match.</p></div>
+    </div>
+  </section>
+
+  <section class="variants-head">
+    <div class="eyebrow">Ten directions</div>
+    <h2>Pick one, or mix parts of them</h2>
+    <p class="lede">All ten use the same structure from the plan. They differ in backdrop, how strong the glass is, the accent and the key style. Text on every glass surface clears 4.5:1 contrast. Reply with a number, or something like "3's backdrop with 1's amber".</p>
+  </section>
+
+  <section class="grid" id="grid"></section>
+
+  <p class="foot">The mockups use browser blur only to suggest frost. On the device the frost is baked into the backdrop, as described under "No live blur on Android 11".</p>
+</div>
+
+<script>
+const V = [
+  { n: 1, name: "Raven Dusk", rec: true,
+    desc: "The RavenHome palette carried over: deep slate with a low amber glow behind the cards and a cooler violet in the corner. Clear glass, amber switches and enter key.",
+    notes: "Safest fit with the launcher. Amber is used only where something is on or confirms.",
+    t: { bg: "radial-gradient(60% 70% at 18% 105%, #b45309aa, transparent 70%), radial-gradient(55% 60% at 92% 0%, #4c1d95aa, transparent 70%), radial-gradient(70% 80% at 60% 60%, #1e293b, transparent), #0f172a",
+      fg: "#f8fafc", fg2: "#cbd5e1", fg3: "#94a3b8", glass: "rgba(255,255,255,.08)", stroke: "rgba(255,255,255,.14)", hi: "rgba(255,255,255,.10)", sep: "rgba(255,255,255,.10)",
+      accent: "#f59e0b", onAccent: "#0f172a", onGlass: "rgba(245,158,11,.18)", onStroke: "rgba(245,158,11,.45)", iconBg: "rgba(245,158,11,.16)", iconFg: "#fbbf24", sel: "rgba(255,255,255,.06)",
+      kbdBg: "linear-gradient(180deg, rgba(15,23,42,.55), rgba(15,23,42,.85)), radial-gradient(60% 120% at 18% 120%, #b4530988, transparent 70%), #0f172a", kbdLine: "rgba(255,255,255,.08)",
+      key: "rgba(255,255,255,.11)", keyStroke: "rgba(255,255,255,.12)", keyFg: "#f8fafc", keyFn: "rgba(255,255,255,.05)", keyPress: "rgba(255,255,255,.24)", chip: "rgba(255,255,255,.07)", chipStroke: "rgba(255,255,255,.10)", preview: "rgba(51,65,85,.95)",
+      r: "1.8cqw", kr: "0.9cqw" },
+    sw: ["#0f172a", "#b45309", "#4c1d95", "#f59e0b", "#f8fafc"] },
+
+  { n: 2, name: "Hearth",
+    desc: "Closest to the stock Apple Home wallpaper: a warm brown-to-ember gradient with creamy, slightly milkier glass. Feels like a lamp-lit room.",
+    notes: "Warmest option. Amber accent is pushed toward orange so it still stands out on the warm backdrop.",
+    t: { bg: "radial-gradient(70% 80% at 20% 100%, #c2410c, transparent 70%), radial-gradient(60% 70% at 85% 10%, #78350f, transparent 70%), linear-gradient(160deg, #3b1d10, #1c0f0a)",
+      fg: "#fff7ed", fg2: "#fed7aa", fg3: "#d6a77a", glass: "rgba(255,237,213,.12)", stroke: "rgba(255,237,213,.18)", hi: "rgba(255,255,255,.14)", sep: "rgba(255,237,213,.13)",
+      accent: "#fb923c", onAccent: "#2a1206", onGlass: "rgba(251,146,60,.22)", onStroke: "rgba(251,146,60,.5)", iconBg: "rgba(255,237,213,.16)", iconFg: "#fdba74", sel: "rgba(255,237,213,.08)",
+      kbdBg: "linear-gradient(180deg, rgba(28,15,10,.5), rgba(28,15,10,.82)), radial-gradient(60% 120% at 20% 120%, #c2410c, transparent 70%), #1c0f0a", kbdLine: "rgba(255,237,213,.10)",
+      key: "rgba(255,237,213,.14)", keyStroke: "rgba(255,237,213,.14)", keyFg: "#fff7ed", keyFn: "rgba(255,237,213,.07)", keyPress: "rgba(255,237,213,.28)", chip: "rgba(255,237,213,.09)", chipStroke: "rgba(255,237,213,.14)", preview: "rgba(87,45,25,.96)",
+      r: "2cqw", kr: "1cqw" },
+    sw: ["#1c0f0a", "#c2410c", "#78350f", "#fb923c", "#fff7ed"] },
+
+  { n: 3, name: "Midnight Aurora",
+    desc: "Navy night sky with a teal and violet aurora drifting behind the cards. Cyan replaces amber as the accent.",
+    notes: "Most 'glassy' feeling because the backdrop has the most colour variation to show through.",
+    t: { bg: "radial-gradient(55% 60% at 15% 90%, #0d9488cc, transparent 70%), radial-gradient(50% 60% at 80% 15%, #7c3aedaa, transparent 70%), radial-gradient(40% 50% at 55% 55%, #1e3a8a88, transparent 70%), #070b1d",
+      fg: "#f0f9ff", fg2: "#bae6fd", fg3: "#7fa3c4", glass: "rgba(255,255,255,.07)", stroke: "rgba(186,230,253,.16)", hi: "rgba(255,255,255,.10)", sep: "rgba(186,230,253,.10)",
+      accent: "#22d3ee", onAccent: "#04212a", onGlass: "rgba(34,211,238,.16)", onStroke: "rgba(34,211,238,.45)", iconBg: "rgba(34,211,238,.14)", iconFg: "#67e8f9", sel: "rgba(255,255,255,.06)",
+      kbdBg: "linear-gradient(180deg, rgba(7,11,29,.5), rgba(7,11,29,.85)), radial-gradient(60% 130% at 15% 120%, #0d9488aa, transparent 70%), #070b1d", kbdLine: "rgba(186,230,253,.08)",
+      key: "rgba(255,255,255,.10)", keyStroke: "rgba(186,230,253,.14)", keyFg: "#f0f9ff", keyFn: "rgba(255,255,255,.05)", keyPress: "rgba(34,211,238,.28)", chip: "rgba(255,255,255,.07)", chipStroke: "rgba(186,230,253,.12)", preview: "rgba(30,41,82,.96)",
+      r: "1.8cqw", kr: "0.9cqw" },
+    sw: ["#070b1d", "#0d9488", "#7c3aed", "#22d3ee", "#f0f9ff"] },
+
+  { n: 4, name: "Frost",
+    desc: "The light version: pale sky-blue to lilac backdrop with bright, milky glass and dark slate text. Closest to Apple Home in daytime light mode.",
+    notes: "The only light variant. Needs a light status bar and dark icons, and is the hardest to keep readable across a bright room.",
+    t: { bg: "radial-gradient(60% 70% at 10% 100%, #c7d2fe, transparent 70%), radial-gradient(60% 70% at 95% 0%, #fbcfe8, transparent 70%), linear-gradient(160deg, #e0f2fe, #ede9fe)",
+      fg: "#0f172a", fg2: "#334155", fg3: "#55627a", glass: "rgba(255,255,255,.55)", stroke: "rgba(255,255,255,.85)", hi: "rgba(255,255,255,.9)", sep: "rgba(15,23,42,.08)",
+      accent: "#2563eb", onAccent: "#ffffff", onGlass: "rgba(37,99,235,.12)", onStroke: "rgba(37,99,235,.35)", iconBg: "rgba(37,99,235,.12)", iconFg: "#1d4ed8", sel: "rgba(255,255,255,.5)", thumb: "#ffffff",
+      kbdBg: "linear-gradient(180deg, rgba(255,255,255,.35), rgba(226,232,240,.75)), radial-gradient(60% 120% at 10% 120%, #c7d2fe, transparent 70%), #e2e8f0", kbdLine: "rgba(255,255,255,.9)",
+      key: "rgba(255,255,255,.78)", keyStroke: "rgba(255,255,255,.95)", keyFg: "#0f172a", keyFn: "rgba(203,213,225,.7)", keyPress: "rgba(191,219,254,.95)", chip: "rgba(255,255,255,.6)", chipStroke: "rgba(255,255,255,.9)", preview: "rgba(255,255,255,.97)",
+      keyShadow: "0 0.15cqw 0 rgba(15,23,42,.10)", r: "1.8cqw", kr: "0.9cqw" },
+    sw: ["#e0f2fe", "#c7d2fe", "#fbcfe8", "#2563eb", "#0f172a"] },
+
+  { n: 5, name: "Obsidian",
+    desc: "Almost black, with only a faint warm haze at the bottom. Glass is barely there: thin hairline strokes do the work and amber appears only on toggles and enter.",
+    notes: "Calmest at night and on an always-on display. Least 'Apple Home', most 'premium dark'.",
+    t: { bg: "radial-gradient(80% 50% at 50% 115%, #422006aa, transparent 70%), #06070a",
+      fg: "#f4f4f5", fg2: "#c4c4cc", fg3: "#8b8b96", glass: "rgba(255,255,255,.035)", stroke: "rgba(255,255,255,.12)", hi: "rgba(255,255,255,.05)", sep: "rgba(255,255,255,.08)",
+      accent: "#f59e0b", onAccent: "#130b00", onGlass: "rgba(255,255,255,.04)", onStroke: "rgba(245,158,11,.5)", iconBg: "transparent", iconFg: "#d4d4d8", sel: "rgba(255,255,255,.04)",
+      kbdBg: "linear-gradient(180deg, #08090c, #0b0b0f)", kbdLine: "rgba(255,255,255,.07)",
+      key: "rgba(255,255,255,.05)", keyStroke: "rgba(255,255,255,.12)", keyFg: "#f4f4f5", keyFn: "rgba(255,255,255,.02)", keyPress: "rgba(255,255,255,.16)", chip: "transparent", chipStroke: "rgba(255,255,255,.12)", preview: "rgba(28,28,32,.98)",
+      r: "1.4cqw", kr: "0.8cqw" },
+    sw: ["#06070a", "#422006", "#3f3f46", "#f59e0b", "#f4f4f5"] },
+
+  { n: 6, name: "Tide",
+    desc: "Deep teal water fading into blue, with aqua accents and rounder, softer keys. Cool and quiet without being as dark as Obsidian.",
+    notes: "Rounder corners everywhere (cards and keys) for a friendlier, more toy-like feel.",
+    t: { bg: "radial-gradient(70% 70% at 80% 100%, #0e7490, transparent 70%), radial-gradient(60% 70% at 10% 0%, #1e40af99, transparent 70%), linear-gradient(170deg, #0b2a3c, #082032)",
+      fg: "#ecfeff", fg2: "#a5f3fc", fg3: "#78b3c0", glass: "rgba(236,254,255,.09)", stroke: "rgba(165,243,252,.18)", hi: "rgba(255,255,255,.12)", sep: "rgba(165,243,252,.12)",
+      accent: "#2dd4bf", onAccent: "#042f2e", onGlass: "rgba(45,212,191,.18)", onStroke: "rgba(45,212,191,.5)", iconBg: "rgba(45,212,191,.16)", iconFg: "#5eead4", sel: "rgba(236,254,255,.06)",
+      kbdBg: "linear-gradient(180deg, rgba(8,32,50,.45), rgba(8,32,50,.82)), radial-gradient(70% 130% at 80% 120%, #0e7490, transparent 70%), #082032", kbdLine: "rgba(165,243,252,.10)",
+      key: "rgba(236,254,255,.12)", keyStroke: "rgba(165,243,252,.14)", keyFg: "#ecfeff", keyFn: "rgba(236,254,255,.06)", keyPress: "rgba(45,212,191,.3)", chip: "rgba(236,254,255,.08)", chipStroke: "rgba(165,243,252,.14)", preview: "rgba(14,64,84,.97)",
+      r: "2.6cqw", kr: "1.6cqw" },
+    sw: ["#082032", "#0e7490", "#1e40af", "#2dd4bf", "#ecfeff"] },
+
+  { n: 7, name: "Sage",
+    desc: "Muted grey-green, like a planted room. Matte frosted glass (more opaque, less shine) and a soft mint accent.",
+    notes: "Low saturation all round, so nothing on screen competes with the content.",
+    t: { bg: "radial-gradient(60% 70% at 15% 100%, #3f6212aa, transparent 70%), radial-gradient(60% 70% at 90% 5%, #134e4a, transparent 70%), linear-gradient(160deg, #1a231d, #121814)",
+      fg: "#f0fdf4", fg2: "#c6dccb", fg3: "#8fa596", glass: "rgba(220,240,225,.10)", stroke: "rgba(220,240,225,.10)", hi: "rgba(255,255,255,.04)", sep: "rgba(220,240,225,.09)",
+      accent: "#86efac", onAccent: "#0b2614", onGlass: "rgba(134,239,172,.14)", onStroke: "rgba(134,239,172,.35)", iconBg: "rgba(134,239,172,.12)", iconFg: "#a7f3d0", sel: "rgba(220,240,225,.06)",
+      kbdBg: "linear-gradient(180deg, rgba(18,24,20,.55), rgba(18,24,20,.88)), radial-gradient(60% 120% at 15% 120%, #3f6212aa, transparent 70%), #121814", kbdLine: "rgba(220,240,225,.08)",
+      key: "rgba(220,240,225,.12)", keyStroke: "transparent", keyFg: "#f0fdf4", keyFn: "rgba(220,240,225,.06)", keyPress: "rgba(134,239,172,.24)", chip: "rgba(220,240,225,.08)", chipStroke: "transparent", preview: "rgba(40,56,45,.97)",
+      r: "1.6cqw", kr: "0.9cqw" },
+    sw: ["#121814", "#3f6212", "#134e4a", "#86efac", "#f0fdf4"] },
+
+  { n: 8, name: "Rosewood",
+    desc: "Plum and mauve with a dusty-rose glow. Rose accent, slightly pink-tinted glass. Softer and more personal than the others.",
+    notes: "Most distinctive colour, but furthest from RavenHome's amber; the launcher would want the same accent to match.",
+    t: { bg: "radial-gradient(60% 70% at 20% 100%, #9f1239aa, transparent 70%), radial-gradient(60% 70% at 85% 0%, #6b21a8aa, transparent 70%), linear-gradient(160deg, #2a1428, #170b16)",
+      fg: "#fff1f2", fg2: "#fecdd3", fg3: "#c9949e", glass: "rgba(255,228,230,.09)", stroke: "rgba(255,228,230,.16)", hi: "rgba(255,255,255,.10)", sep: "rgba(255,228,230,.11)",
+      accent: "#fb7185", onAccent: "#2a0610", onGlass: "rgba(251,113,133,.18)", onStroke: "rgba(251,113,133,.48)", iconBg: "rgba(251,113,133,.15)", iconFg: "#fda4af", sel: "rgba(255,228,230,.06)",
+      kbdBg: "linear-gradient(180deg, rgba(23,11,22,.5), rgba(23,11,22,.85)), radial-gradient(60% 120% at 20% 120%, #9f1239aa, transparent 70%), #170b16", kbdLine: "rgba(255,228,230,.09)",
+      key: "rgba(255,228,230,.11)", keyStroke: "rgba(255,228,230,.13)", keyFg: "#fff1f2", keyFn: "rgba(255,228,230,.05)", keyPress: "rgba(251,113,133,.28)", chip: "rgba(255,228,230,.08)", chipStroke: "rgba(255,228,230,.12)", preview: "rgba(70,30,55,.97)",
+      r: "1.8cqw", kr: "0.9cqw" },
+    sw: ["#170b16", "#9f1239", "#6b21a8", "#fb7185", "#fff1f2"] },
+
+  { n: 9, name: "Graphite",
+    desc: "Grey only: graphite backdrop, neutral glass, white as the accent. Highest contrast of the set, for readability from across a room.",
+    notes: "Bigger, bolder titles and brighter key text. Good if the Echo Show sits far from where you read it.",
+    t: { bg: "radial-gradient(70% 70% at 50% 110%, #3f3f46, transparent 70%), radial-gradient(50% 60% at 90% 0%, #27272a, transparent 70%), #111113",
+      fg: "#ffffff", fg2: "#e4e4e7", fg3: "#a1a1aa", glass: "rgba(255,255,255,.09)", stroke: "rgba(255,255,255,.20)", hi: "rgba(255,255,255,.12)", sep: "rgba(255,255,255,.14)",
+      accent: "#fafafa", onAccent: "#111113", onGlass: "rgba(255,255,255,.16)", onStroke: "rgba(255,255,255,.5)", iconBg: "rgba(255,255,255,.12)", iconFg: "#ffffff", sel: "rgba(255,255,255,.07)", thumb: "#111113",
+      kbdBg: "linear-gradient(180deg, rgba(17,17,19,.5), rgba(17,17,19,.9)), radial-gradient(70% 130% at 50% 120%, #3f3f46, transparent 70%), #111113", kbdLine: "rgba(255,255,255,.12)",
+      key: "rgba(255,255,255,.13)", keyStroke: "rgba(255,255,255,.18)", keyFg: "#ffffff", keyFn: "rgba(255,255,255,.06)", keyPress: "rgba(255,255,255,.3)", chip: "rgba(255,255,255,.08)", chipStroke: "rgba(255,255,255,.16)", preview: "rgba(52,52,58,.98)",
+      titleW: 600, r: "1.6cqw", kr: "0.8cqw" },
+    sw: ["#111113", "#3f3f46", "#71717a", "#fafafa", "#ffffff"] },
+
+  { n: 10, name: "Day / Night",
+    desc: "Frost during the day, a dimmed, red-shifted Raven Dusk at night, switching on the same schedule as RavenHome's night mode (shown here in its night state).",
+    notes: "Most work: Settings and the keyboard both need light and night resources, and the switch follows the system night setting, which RavenHome already drives.",
+    split: true,
+    t: { bg: "radial-gradient(60% 70% at 20% 105%, #7c2d12aa, transparent 70%), radial-gradient(50% 60% at 92% 0%, #3b0764aa, transparent 70%), #0a0d18",
+      fg: "#fde7cf", fg2: "#e6c3a0", fg3: "#a8896e", glass: "rgba(255,220,180,.06)", stroke: "rgba(255,220,180,.12)", hi: "rgba(255,220,180,.07)", sep: "rgba(255,220,180,.09)",
+      accent: "#d97706", onAccent: "#1a0d02", onGlass: "rgba(217,119,6,.18)", onStroke: "rgba(217,119,6,.45)", iconBg: "rgba(217,119,6,.15)", iconFg: "#f59e0b", sel: "rgba(255,220,180,.05)", thumb: "#fde7cf",
+      kbdBg: "linear-gradient(180deg, rgba(10,13,24,.55), rgba(10,13,24,.9)), radial-gradient(60% 120% at 20% 120%, #7c2d12aa, transparent 70%), #0a0d18", kbdLine: "rgba(255,220,180,.08)",
+      key: "rgba(255,220,180,.08)", keyStroke: "rgba(255,220,180,.10)", keyFg: "#fde7cf", keyFn: "rgba(255,220,180,.04)", keyPress: "rgba(217,119,6,.28)", chip: "rgba(255,220,180,.06)", chipStroke: "rgba(255,220,180,.10)", preview: "rgba(48,30,24,.97)",
+      r: "1.8cqw", kr: "0.9cqw" },
+    sw: ["#e0f2fe", "#2563eb", "#0a0d18", "#d97706", "#fde7cf"] },
+];
+
+const ico = {
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+  wifi: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2.5 9a14 14 0 0 1 19 0M5.5 12.5a9.5 9.5 0 0 1 13 0M8.6 16a5 5 0 0 1 6.8 0"/><circle cx="12" cy="19.3" r="1.2" fill="currentColor" stroke="none"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  shift: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 4l8 8h-4.5v7h-7v-7H4z"/></svg>',
+  del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M9 5h11v14H9l-6-7z"/><path d="M12.5 9.5l5 5M17.5 9.5l-5 5"/></svg>',
+};
+
+function css(t) {
+  const m = { bg: t.bg, fg: t.fg, fg2: t.fg2, fg3: t.fg3, glass: t.glass, stroke: t.stroke, hi: t.hi, sep: t.sep, accent: t.accent, "on-accent": t.onAccent,
+    "on-glass": t.onGlass, "on-stroke": t.onStroke, "icon-bg": t.iconBg, "icon-fg": t.iconFg, sel: t.sel, "kbd-bg": t.kbdBg, "kbd-line": t.kbdLine,
+    key: t.key, "key-stroke": t.keyStroke, "key-fg": t.keyFg, keyfn: t.keyFn, "key-press": t.keyPress, chip: t.chip, "chip-stroke": t.chipStroke,
+    preview: t.preview, r: t.r, kr: t.kr, thumb: t.thumb, "key-shadow": t.keyShadow, "title-w": t.titleW };
+  return Object.entries(m).filter(([, v]) => v !== undefined).map(([k, v]) => `--v-${k}:${v}`).join(";");
+}
+
+function row(icon, title, sub, tail, sel) {
+  return `<div class="row${sel ? " sel" : ""}"><span class="ico">${icon}</span><span class="grow"><span>${title}</span>${sub ? `<span class="sub">${sub}</span>` : ""}</span>${tail ? `<span class="tail">${tail}</span>` : ""}</div>`;
+}
+
+function keyboard() {
+  const r = (s, pressAt) => [...s].map((c, i) => `<span class="k${i === pressAt ? " press" : ""}" data-c="${c}">${c}</span>`).join("");
+  return `<div class="kbd">
+    <div class="sugg"><span class="chip">raven</span><span class="chip main">ravens</span><span class="chip">ravenous</span></div>
+    <div class="keys">
+      <div class="krow">${r("qwertyuiop")}</div>
+      <div class="krow" style="padding:0 3.6cqw">${r("asdfghjkl")}</div>
+      <div class="krow"><span class="k fn w15">${ico.shift}</span>${r("zxcvbnm", 6)}<span class="k fn w15">${ico.del}</span></div>
+      <div class="krow"><span class="k fn w15">?123</span><span class="k fn">,</span><span class="k space">English</span><span class="k fn">.</span><span class="k enter">Connect</span></div>
+    </div>
+  </div>`;
+}
+
+const grid = document.getElementById("grid");
+grid.innerHTML = V.map(v => `
+  <article class="variant">
+    <div class="device"><div class="screen" style="${css(v.t)}">
+      <div class="status"><span>7:42</span><span>RavenOS</span></div>
+      ${v.split ? '<span class="split-note">night · 21:00–07:00</span>' : ""}
+      <div class="app"><div class="col">
+        <div class="bar">${ico.back}<span>Wi-Fi</span></div>
+        <div class="switchbar"><span>Use Wi-Fi</span><span class="toggle"></span></div>
+        <div class="group">
+          ${row(ico.wifi, "Rookery", "Connected", "", false)}
+          ${row(ico.wifi, "Home-5G", "Enter password", ico.lock.replace("<svg", '<svg width="14" height="14" style="width:1.6cqw;height:1.6cqw"'), true)}
+        </div>
+        <div class="cat">Other networks</div>
+        <div class="group">
+          ${row(ico.wifi, "Corvid Guest", "", "", false)}
+          ${row(ico.plus, "Add network", "", "", false)}
+        </div>
+      </div></div>
+      ${keyboard()}
+    </div></div>
+    <div class="vmeta">
+      <div class="vtitle"><span class="vnum">${String(v.n).padStart(2, "0")}</span><span class="vname">${v.name}</span>${v.rec ? '<span class="badge">recommended</span>' : ""}</div>
+      <p class="vdesc">${v.desc}</p>
+      <div class="swatches">${v.sw.map(c => `<span class="sw" style="background:${c}" title="${c}"></span>`).join("")}<span class="swl">${v.sw.slice(0, 1).concat(v.sw[3]).join(" · ")}</span></div>
+      <p class="notes">${v.notes}</p>
+    </div>
+  </article>`).join("");
+
+</script>

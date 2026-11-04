@@ -1,0 +1,67 @@
+From e3e4b022f396ff4c9aa80e0d5849603ccc81762f Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 09:42:45 -0700
+Subject: [PATCH 09/10] Settings: Draw dialogs as glass cards
+
+Give Theme.AlertDialog, used by the Bluetooth pairing request and
+Settings' AndroidX dialogs, the glass look: the theme's dialog radius
+instead of the stock one, a hairline glass edge around the solid
+surface, and a deeper dim behind it.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I480633c9c40ef9e3e90b2f6306997588bd94a9cf
+---
+ res/drawable/raven_dialog_background.xml | 18 ++++++++++++++++++
+ res/values/themes.xml                    |  4 +++-
+ 2 files changed, 21 insertions(+), 1 deletion(-)
+ create mode 100644 res/drawable/raven_dialog_background.xml
+
+diff --git a/res/drawable/raven_dialog_background.xml b/res/drawable/raven_dialog_background.xml
+new file mode 100644
+index 0000000..d01986b
+--- /dev/null
++++ b/res/drawable/raven_dialog_background.xml
+@@ -0,0 +1,18 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!--
++     SPDX-FileCopyrightText: 2026 RavenOS
++     SPDX-License-Identifier: Apache-2.0
++-->
++<!-- Dialog window: a solid glass-tinted surface with the cards' hairline edge. The inset
++     matches AppCompat's own dialog background so dialog sizes don't change. -->
++<inset xmlns:android="http://schemas.android.com/apk/res/android"
++       android:insetLeft="16dp"
++       android:insetTop="16dp"
++       android:insetRight="16dp"
++       android:insetBottom="16dp">
++    <shape android:shape="rectangle">
++        <corners android:radius="@dimen/raven_dialog_radius" />
++        <solid android:color="@color/raven_surface" />
++        <stroke android:width="1dp" android:color="@color/raven_glass_stroke" />
++    </shape>
++</inset>
+diff --git a/res/values/themes.xml b/res/values/themes.xml
+index 2b62437..fe8d562 100644
+--- a/res/values/themes.xml
++++ b/res/values/themes.xml
+@@ -161,6 +161,8 @@
+         <item name="android:textColorPrimary">@color/raven_text_primary</item>
+         <item name="android:textColorSecondary">@color/raven_text_secondary</item>
+         <item name="android:dialogCornerRadius">@dimen/raven_dialog_radius</item>
++        <item name="android:windowBackground">@drawable/raven_dialog_background</item>
++        <item name="android:backgroundDimAmount">0.6</item>
+     </style>
+ 
+     <style name="Theme.AlertDialog" parent="Theme.AlertDialog.Base">
+@@ -172,7 +174,7 @@
+         <item name="android:actionBarStyle">@style/Widget.ActionBar</item>
+ 
+         <!-- copied from Theme.DeviceDefault.Dialog.Alert -->
+-        <item name="dialogCornerRadius">@*android:dimen/config_dialogCornerRadius</item>
++        <item name="dialogCornerRadius">@dimen/raven_dialog_radius</item>
+         <item name="android:windowTitleStyle">@*android:style/DialogWindowTitle.DeviceDefault</item>
+         <item name="android:textAppearanceMedium">@style/TextAppearance.DialogMessage</item>
+         <item name="buttonBarButtonStyle">@*android:style/Widget.DeviceDefault.Button.ButtonBar.AlertDialog</item>
+-- 
+2.53.0
+

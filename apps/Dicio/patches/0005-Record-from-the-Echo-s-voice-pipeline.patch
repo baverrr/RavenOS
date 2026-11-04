@@ -1,0 +1,337 @@
+From 9a8a9d0cc591920b6c312921f7dcb49a5d71de6f Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 11:27:13 -0700
+Subject: [PATCH 5/5] Record from the Echo's voice pipeline
+
+On the Echo Show the VOICE_RECOGNITION capture pipeline beamforms but
+applies no gain, so speech reached the wake word and Vosk about 20 dB
+quieter than from VOICE_COMMUNICATION and "Hey Raven" never fired.
+Measured with speech at the usual distance: loudest second -40.7 dB and
+wake score 0.991 from VOICE_RECOGNITION, -21.4 dB and 0.998 from
+VOICE_COMMUNICATION, which adds gain, noise reduction and echo
+cancellation.
+
+- Add MIC_SOURCE and use it for the wake word.
+- Add MicSpeechService, Vosk's SpeechService with the source as above
+  instead of its hardcoded VOICE_RECOGNITION, and use it for speech
+  recognition.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../org/stypox/dicio/io/audio/MicSource.kt    |  11 ++
+ .../dicio/io/input/vosk/MicSpeechService.kt   | 131 ++++++++++++++++++
+ .../dicio/io/input/vosk/VoskInputDevice.kt    |   9 +-
+ .../dicio/io/input/vosk/VoskListener.kt       |   5 +-
+ .../stypox/dicio/io/input/vosk/VoskState.kt   |  13 +-
+ .../org/stypox/dicio/io/wake/WakeService.kt   |   4 +-
+ 6 files changed, 156 insertions(+), 17 deletions(-)
+ create mode 100644 app/src/main/kotlin/org/stypox/dicio/io/audio/MicSource.kt
+ create mode 100644 app/src/main/kotlin/org/stypox/dicio/io/input/vosk/MicSpeechService.kt
+
+diff --git a/app/src/main/kotlin/org/stypox/dicio/io/audio/MicSource.kt b/app/src/main/kotlin/org/stypox/dicio/io/audio/MicSource.kt
+new file mode 100644
+index 0000000..e5ef666
+--- /dev/null
++++ b/app/src/main/kotlin/org/stypox/dicio/io/audio/MicSource.kt
+@@ -0,0 +1,11 @@
++package org.stypox.dicio.io.audio
++
++import android.media.MediaRecorder
++
++/**
++ * RavenOS: the microphone source for the wake word and speech recognition. On the Echo Show
++ * the VOICE_RECOGNITION pipeline beamforms but applies no gain, so speech arrives about 20 dB
++ * quieter than from VOICE_COMMUNICATION, which adds gain, noise reduction and echo
++ * cancellation (the latter also lets "Hey Raven, turn off" through a ringing alarm).
++ */
++const val MIC_SOURCE = MediaRecorder.AudioSource.VOICE_COMMUNICATION
+diff --git a/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/MicSpeechService.kt b/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/MicSpeechService.kt
+new file mode 100644
+index 0000000..945d3f7
+--- /dev/null
++++ b/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/MicSpeechService.kt
+@@ -0,0 +1,131 @@
++/*
++ * Based on org.vosk.android.SpeechService from vosk-android 0.3.70
++ * Copyright 2019 Alpha Cephei Inc., licensed under the Apache License, Version 2.0.
++ *
++ * RavenOS: the same service, but recording from MIC_SOURCE instead of the hardcoded
++ * VOICE_RECOGNITION source.
++ */
++
++package org.stypox.dicio.io.input.vosk
++
++import android.annotation.SuppressLint
++import android.media.AudioFormat
++import android.media.AudioRecord
++import android.os.Handler
++import android.os.Looper
++import org.stypox.dicio.io.audio.MIC_SOURCE
++import org.vosk.Recognizer
++import org.vosk.android.RecognitionListener
++import java.io.IOException
++import kotlin.math.roundToInt
++
++class MicSpeechService(private val recognizer: Recognizer, sampleRate: Float) {
++    private val sampleRate = sampleRate.toInt()
++    private val bufferSize = (this.sampleRate * BUFFER_SIZE_SECONDS).roundToInt()
++    private val mainHandler = Handler(Looper.getMainLooper())
++    private var recognizerThread: RecognizerThread? = null
++
++    @SuppressLint("MissingPermission")
++    private val recorder = AudioRecord(
++        MIC_SOURCE,
++        this.sampleRate,
++        AudioFormat.CHANNEL_IN_MONO,
++        AudioFormat.ENCODING_PCM_16BIT,
++        bufferSize * 2,
++    )
++
++    init {
++        if (recorder.state == AudioRecord.STATE_UNINITIALIZED) {
++            recorder.release()
++            throw IOException("Failed to initialize recorder. Microphone might be already in use.")
++        }
++    }
++
++    fun startListening(listener: RecognitionListener): Boolean {
++        if (recognizerThread != null) {
++            return false
++        }
++        recognizerThread = RecognizerThread(listener).also { it.start() }
++        return true
++    }
++
++    fun stop(): Boolean = stopRecognizerThread()
++
++    fun cancel(): Boolean {
++        recognizerThread?.paused = true
++        return stopRecognizerThread()
++    }
++
++    fun shutdown() {
++        recorder.release()
++    }
++
++    fun setPause(paused: Boolean) {
++        recognizerThread?.paused = paused
++    }
++
++    fun reset() {
++        recognizerThread?.reset = true
++    }
++
++    private fun stopRecognizerThread(): Boolean {
++        val thread = recognizerThread ?: return false
++        try {
++            thread.interrupt()
++            thread.join()
++        } catch (e: InterruptedException) {
++            Thread.currentThread().interrupt()
++        }
++        recognizerThread = null
++        return true
++    }
++
++    private inner class RecognizerThread(private val listener: RecognitionListener) : Thread() {
++        @Volatile
++        var paused = false
++
++        @Volatile
++        var reset = false
++
++        override fun run() {
++            recorder.startRecording()
++            if (recorder.recordingState == AudioRecord.RECORDSTATE_STOPPED) {
++                recorder.stop()
++                val e = IOException("Failed to start recording. Microphone might be already in use.")
++                mainHandler.post { listener.onError(e) }
++            }
++
++            val buffer = ShortArray(bufferSize)
++            while (!interrupted()) {
++                val nread = recorder.read(buffer, 0, buffer.size)
++                if (paused) {
++                    continue
++                }
++                if (reset) {
++                    recognizer.reset()
++                    reset = false
++                }
++                if (nread < 0) {
++                    throw RuntimeException("error reading audio buffer")
++                }
++                if (recognizer.acceptWaveForm(buffer, nread)) {
++                    val result = recognizer.result
++                    mainHandler.post { listener.onResult(result) }
++                } else {
++                    val partialResult = recognizer.partialResult
++                    mainHandler.post { listener.onPartialResult(partialResult) }
++                }
++            }
++
++            recorder.stop()
++            if (!paused) {
++                val finalResult = recognizer.finalResult
++                mainHandler.post { listener.onFinalResult(finalResult) }
++            }
++        }
++    }
++
++    companion object {
++        private const val BUFFER_SIZE_SECONDS = 0.2f
++    }
++}
+diff --git a/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/VoskInputDevice.kt b/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/VoskInputDevice.kt
+index 66ca5c8..c6608f7 100644
+--- a/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/VoskInputDevice.kt
++++ b/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/VoskInputDevice.kt
+@@ -60,7 +60,6 @@ import org.vosk.LibVosk
+ import org.vosk.LogLevel
+ import org.vosk.Model
+ import org.vosk.Recognizer
+-import org.vosk.android.SpeechService
+ import java.io.File
+ import java.io.IOException
+ import java.util.Locale
+@@ -350,13 +349,13 @@ class VoskInputDevice(
+         _state.value = Loading(thenStartListeningEventListener)
+ 
+         operationsJob = scope.launch {
+-            val speechService: SpeechService
++            val speechService: MicSpeechService
+             try {
+                 LibVosk.setLogLevel(if (BuildConfig.DEBUG) LogLevel.DEBUG else LogLevel.WARNINGS)
+                 val model = Model(modelDirectory.absolutePath)
+                 val recognizer = Recognizer(model, SAMPLE_RATE)
+                 recognizer.setMaxAlternatives(ALTERNATIVE_COUNT)
+-                speechService = SpeechService(recognizer, SAMPLE_RATE)
++                speechService = MicSpeechService(recognizer, SAMPLE_RATE)
+             } catch (e: IOException) {
+                 Log.e(TAG, "Can't load Vosk model", e)
+                 _state.value = ErrorLoading(e)
+@@ -417,7 +416,7 @@ class VoskInputDevice(
+      * Starts the speech service listening, and changes the state to [Listening].
+      */
+     private fun startListening(
+-        speechService: SpeechService,
++        speechService: MicSpeechService,
+         eventListener: (InputEvent) -> Unit,
+     ) {
+         _state.value = Listening(speechService, eventListener)
+@@ -429,7 +428,7 @@ class VoskInputDevice(
+      * `internal` because it is used by [VoskListener].
+      */
+     internal fun stopListening(
+-        speechService: SpeechService,
++        speechService: MicSpeechService,
+         eventListener: (InputEvent) -> Unit,
+         sendNoneEvent: Boolean,
+     ) {
+diff --git a/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/VoskListener.kt b/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/VoskListener.kt
+index fb12b64..b10d69b 100644
+--- a/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/VoskListener.kt
++++ b/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/VoskListener.kt
+@@ -24,12 +24,11 @@ import org.json.JSONException
+ import org.json.JSONObject
+ import org.stypox.dicio.io.input.InputEvent
+ import org.vosk.android.RecognitionListener
+-import org.vosk.android.SpeechService
+ 
+ 
+ /**
+  * This class is an implementation of [RecognitionListener] that listens to events generated by a
+- * Vosk [SpeechService], pushes them to [eventListener], and handles the listening state via
++ * Vosk [MicSpeechService], pushes them to [eventListener], and handles the listening state via
+  * [VoskInputDevice].
+  *
+  * @param silencesBeforeStop how many times Vosk should report a "silence" before giving up trying
+@@ -39,7 +38,7 @@ internal class VoskListener(
+     private val voskInputDevice: VoskInputDevice,
+     private val eventListener: (InputEvent) -> Unit,
+     private var silencesBeforeStop: Int,
+-    private val speechService: SpeechService,
++    private val speechService: MicSpeechService,
+ ) : RecognitionListener {
+ 
+     /**
+diff --git a/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/VoskState.kt b/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/VoskState.kt
+index ea4170f..dd2adcb 100644
+--- a/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/VoskState.kt
++++ b/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/VoskState.kt
+@@ -22,13 +22,12 @@ package org.stypox.dicio.io.input.vosk
+ import org.stypox.dicio.io.input.InputEvent
+ import org.stypox.dicio.io.input.SttState
+ import org.stypox.dicio.ui.util.Progress
+-import org.vosk.android.SpeechService
+ 
+ /**
+  * The internal state for [VoskInputDevice]. This is an enum with different fields depending on the
+  * current state, to avoid having nullable objects all over the place in [VoskInputDevice].
+  * [SttState] is symmetrical to this enum, except that it does not expose implementation-defined
+- * fields to the UI, such as [SpeechService].
++ * fields to the UI, such as [MicSpeechService].
+  */
+ sealed interface VoskState {
+ 
+@@ -105,23 +104,23 @@ sealed interface VoskState {
+     ) : VoskState
+ 
+     /**
+-     * The model, stored in [SpeechService], is ready in RAM, and can start listening at any time.
++     * The model, stored in [MicSpeechService], is ready in RAM, and can start listening at any time.
+      */
+     data class Loaded(
+-        internal val speechService: SpeechService
++        internal val speechService: MicSpeechService
+     ) : VoskState
+ 
+     /**
+-     * The model, stored in [SpeechService], is listening.
++     * The model, stored in [MicSpeechService], is listening.
+      */
+     data class Listening(
+-        internal val speechService: SpeechService,
++        internal val speechService: MicSpeechService,
+         internal val eventListener: (InputEvent) -> Unit,
+     ) : VoskState
+ 
+     /**
+      * Converts this [VoskState] to a [SttState], which is basically the same, except that
+-     * implementation-defined fields (e.g. [SpeechService]) are stripped away.
++     * implementation-defined fields (e.g. [MicSpeechService]) are stripped away.
+      */
+     fun toUiState(): SttState {
+         return when (this) {
+diff --git a/app/src/main/kotlin/org/stypox/dicio/io/wake/WakeService.kt b/app/src/main/kotlin/org/stypox/dicio/io/wake/WakeService.kt
+index 6fca4b9..fedaddd 100644
+--- a/app/src/main/kotlin/org/stypox/dicio/io/wake/WakeService.kt
++++ b/app/src/main/kotlin/org/stypox/dicio/io/wake/WakeService.kt
+@@ -12,7 +12,6 @@ import android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+ import android.content.pm.PackageManager.PERMISSION_GRANTED
+ import android.media.AudioFormat
+ import android.media.AudioRecord
+-import android.media.MediaRecorder
+ import android.os.Build
+ import android.os.Handler
+ import android.os.IBinder
+@@ -29,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
+ import kotlinx.coroutines.SupervisorJob
+ import kotlinx.coroutines.flow.drop
+ import kotlinx.coroutines.launch
++import org.stypox.dicio.io.audio.MIC_SOURCE
+ import org.stypox.dicio.MainActivity
+ import org.stypox.dicio.MainActivity.Companion.ACTION_WAKE_WORD
+ import org.stypox.dicio.alerts.Alerts
+@@ -189,7 +189,7 @@ class WakeService : Service() {
+     private fun listenForWakeWord() {
+         @SuppressLint("MissingPermission")
+         val ar = AudioRecord(
+-            MediaRecorder.AudioSource.VOICE_RECOGNITION,
++            MIC_SOURCE,
+             16000,
+             AudioFormat.CHANNEL_IN_MONO,
+             AudioFormat.ENCODING_PCM_16BIT,
+-- 
+2.53.0
+

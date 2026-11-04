@@ -1,0 +1,34 @@
+From 167d2e54d79dca006e3a58aaa5d8f046057ea77a Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 09:42:07 -0700
+Subject: [PATCH] SystemUI: Hide the Battery Saver tile
+
+The Echo Show has no battery; it reports a full one that is always plugged in. Battery Saver has nothing to do, so the tile reports itself unavailable, which also drops it from saved tile lists and the tile editor.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I27f933bf3e6950c496a4ae9c6b71c2e4e1155bc1
+---
+ .../com/android/systemui/qs/tiles/BatterySaverTile.java    | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/qs/tiles/BatterySaverTile.java b/packages/SystemUI/src/com/android/systemui/qs/tiles/BatterySaverTile.java
+index 7150e435..1357482b 100644
+--- a/packages/SystemUI/src/com/android/systemui/qs/tiles/BatterySaverTile.java
++++ b/packages/SystemUI/src/com/android/systemui/qs/tiles/BatterySaverTile.java
+@@ -76,6 +76,13 @@ public class BatterySaverTile extends QSTileImpl<BooleanState> implements
+         mSetting.setUserId(newUserId);
+     }
+ 
++    @Override
++    public boolean isAvailable() {
++        // RavenOS: the Echo Show has no battery (it reports a full one that is always plugged
++        // in), so there is nothing to save. Also hides the tile in the tile editor.
++        return false;
++    }
++
+     @Override
+     public int getMetricsCategory() {
+         return MetricsEvent.QS_BATTERY_TILE;
+-- 
+2.53.0
+

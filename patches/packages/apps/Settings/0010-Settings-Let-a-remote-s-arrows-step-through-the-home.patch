@@ -1,0 +1,76 @@
+From 873e21f74c4240df58fe3676938499e0fa48cc4f Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 09:42:45 -0700
+Subject: [PATCH 10/10] Settings: Let a remote's arrows step through the
+ homepage rows
+
+The homepage gives focus to the container around the list so the list
+doesn't scroll on launch. That container covers the whole list, so a
+D-pad up/down finds no next focus and only scrolls the page. Move focus
+to the first row on screen instead; from there the arrows go row by row.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I709429e7a2a0fc22ac620525e35078121109bca9
+---
+ .../homepage/SettingsHomepageActivity.java    | 31 +++++++++++++++++++
+ 1 file changed, 31 insertions(+)
+
+diff --git a/src/com/android/settings/homepage/SettingsHomepageActivity.java b/src/com/android/settings/homepage/SettingsHomepageActivity.java
+index 526c156..47ed50e 100644
+--- a/src/com/android/settings/homepage/SettingsHomepageActivity.java
++++ b/src/com/android/settings/homepage/SettingsHomepageActivity.java
+@@ -20,7 +20,9 @@ import android.animation.LayoutTransition;
+ import android.app.ActivityManager;
+ import android.app.settings.SettingsEnums;
+ import android.os.Bundle;
++import android.graphics.Rect;
+ import android.util.Log;
++import android.view.KeyEvent;
+ import android.view.View;
+ import android.widget.FrameLayout;
+ import android.widget.ImageView;
+@@ -40,6 +42,8 @@ import com.android.settings.overlay.FeatureFactory;
+ import com.android.settings.widget.GlassGroupDecoration;
+ import com.android.settings.widget.GlowBackdrop;
+ 
++import java.util.ArrayList;
++
+ public class SettingsHomepageActivity extends FragmentActivity {
+ 
+     @Override
+@@ -119,5 +123,32 @@ public class SettingsHomepageActivity extends FragmentActivity {
+         // Prevent inner RecyclerView gets focus and invokes scrolling.
+         view.setFocusableInTouchMode(true);
+         view.requestFocus();
++        // The container covers the whole list, so focus search finds nothing past it and a
++        // remote's up/down only scrolls. Hand focus to the first row on screen instead.
++        view.setOnKeyListener((v, keyCode, event) -> {
++            if (event.getAction() != KeyEvent.ACTION_DOWN || !v.isFocused()
++                    || (keyCode != KeyEvent.KEYCODE_DPAD_DOWN
++                            && keyCode != KeyEvent.KEYCODE_DPAD_UP)) {
++                return false;
++            }
++            final View row = firstVisibleFocusable(v);
++            return row != null && row.requestFocus();
++        });
++    }
++
++    private static View firstVisibleFocusable(View container) {
++        final ArrayList<View> focusables = new ArrayList<>();
++        container.addFocusables(focusables, View.FOCUS_DOWN);
++        final Rect rect = new Rect();
++        View first = null;
++        int firstTop = Integer.MAX_VALUE;
++        for (View candidate : focusables) {
++            if (candidate != container && candidate.getGlobalVisibleRect(rect)
++                    && rect.top < firstTop) {
++                first = candidate;
++                firstTop = rect.top;
++            }
++        }
++        return first;
+     }
+ }
+-- 
+2.53.0
+

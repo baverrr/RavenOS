@@ -1,0 +1,34 @@
+From b9dbfa8689c98d1bfbb70427927e39dd8dd986de Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 10:14:51 -0700
+Subject: [PATCH] SystemUI: Hide the Data Saver tile
+
+The Echo Show only uses Wi-Fi, which is unmetered, so Data Saver has nothing to limit. The tile reports itself unavailable, which also drops it from saved tile lists, the tile editor and the auto-added tiles.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I0c22ccbe5c05b2caf5a27be64fcc720607d786c7
+---
+ .../src/com/android/systemui/qs/tiles/DataSaverTile.java   | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/packages/SystemUI/src/com/android/systemui/qs/tiles/DataSaverTile.java b/packages/SystemUI/src/com/android/systemui/qs/tiles/DataSaverTile.java
+index 8ba60840..94d72ffc 100644
+--- a/packages/SystemUI/src/com/android/systemui/qs/tiles/DataSaverTile.java
++++ b/packages/SystemUI/src/com/android/systemui/qs/tiles/DataSaverTile.java
+@@ -96,6 +96,13 @@ public class DataSaverTile extends QSTileImpl<BooleanState> implements
+         state.expandedAccessibilityClassName = Switch.class.getName();
+     }
+ 
++    @Override
++    public boolean isAvailable() {
++        // RavenOS: the Echo Show only uses Wi-Fi, which is unmetered, so Data Saver has nothing
++        // to limit. Also hides the tile in the tile editor and when Data Saver turns on.
++        return false;
++    }
++
+     @Override
+     public int getMetricsCategory() {
+         return MetricsEvent.QS_DATA_SAVER;
+-- 
+2.53.0
+

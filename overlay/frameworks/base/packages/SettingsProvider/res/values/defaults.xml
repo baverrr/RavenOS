@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Never time the screen out; Raven Home also holds it on. -->
+    <integer name="def_screen_off_timeout">2147483647</integer>
+    <bool name="def_stay_on_while_plugged_in">true</bool>
+    <bool name="def_lockscreen_disabled">true</bool>
+    <integer name="def_screen_brightness">160</integer>
+    <string name="def_device_name">RavenOS</string>
+    <string name="def_device_name_simple">RavenOS</string>
+</resources>

@@ -1,0 +1,31 @@
+From d0b1dfc5111a608e537b7f404271f9b20d8131ec Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 08:46:45 -0700
+Subject: [PATCH] LineageParts: Make the touch glow follow the finger faster
+
+The glow now catches up with the finger in about 40 ms instead of 120 ms and fades in over 80 ms instead of 150 ms.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I7029629a4e2717842c168df10fa10aad2e297ad3
+---
+ src/org/lineageos/lineageparts/widget/GlowBackdrop.java | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/org/lineageos/lineageparts/widget/GlowBackdrop.java b/src/org/lineageos/lineageparts/widget/GlowBackdrop.java
+index 47b6365..126f638 100644
+--- a/src/org/lineageos/lineageparts/widget/GlowBackdrop.java
++++ b/src/org/lineageos/lineageparts/widget/GlowBackdrop.java
+@@ -44,8 +44,8 @@ import java.util.List;
+ public class GlowBackdrop extends Drawable implements TimeAnimator.TimeListener {
+ 
+     /** How quickly the glow catches up with the finger. */
+-    private static final float FOLLOW_MILLIS = 120f;
+-    private static final float FADE_IN_MILLIS = 150f;
++    private static final float FOLLOW_MILLIS = 40f;
++    private static final float FADE_IN_MILLIS = 80f;
+     private static final float FADE_OUT_MILLIS = 600f;
+     /** Glow radius as a fraction of the shorter screen side. */
+     private static final float RADIUS_FRACTION = 0.45f;
+-- 
+2.53.0
+

@@ -1,0 +1,33 @@
+From d346cc180d44637aed30de72966f6cbe9189168d Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 15:47:52 -0700
+Subject: [PATCH] Bluetooth: Always register the AVRCP cover art provider
+
+The provider was enabled from avrcp_controller_enable_cover_art, but
+the package manager reads manifest attributes without runtime resource
+overlays. With cover art turned on by an overlay, images downloaded
+but no app could open them. The provider already answers "not found"
+when cover art is off.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: Ida69a96a3c74f07c2178a2d9c003a37cb66ab073
+---
+ AndroidManifest.xml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/AndroidManifest.xml b/AndroidManifest.xml
+index d2dae71..bd2558b 100644
+--- a/AndroidManifest.xml
++++ b/AndroidManifest.xml
+@@ -348,7 +348,7 @@
+         <provider android:process="@string/process"
+             android:name=".avrcpcontroller.AvrcpCoverArtProvider"
+             android:authorities="com.android.bluetooth.avrcpcontroller.AvrcpCoverArtProvider"
+-            android:enabled="@bool/avrcp_controller_enable_cover_art"
++            android:enabled="true"
+             android:grantUriPermissions="true"
+             android:exported="true">
+         </provider>
+-- 
+2.53.0
+

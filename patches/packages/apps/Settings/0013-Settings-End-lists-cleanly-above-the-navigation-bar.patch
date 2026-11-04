@@ -1,0 +1,126 @@
+From 0507ad8c3ad77217572ca415d023e9125631c7e8 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 12:43:55 -0700
+Subject: [PATCH] Settings: End lists cleanly above the navigation bar
+
+Theme.Settings turns off child clipping, so with the transparent
+navigation bar the rows and glass cards of every list page drew past
+the list, behind the navigation buttons and under the action bar, and
+looked sliced off. Clip each list to its own bounds, and fade content
+that continues past the top or bottom edge over 48dp. The homepage,
+which lays out behind the navigation bar, now ends its scroll view
+above it. The backdrop still runs behind the bars, and the end-of-list
+gap is unchanged.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: Id11d754d50e2047260cb0ab8d13021f1611cf7af
+---
+ .../settings/SettingsPreferenceFragment.java  |  2 ++
+ .../homepage/SettingsHomepageActivity.java    | 13 +++++++
+ .../android/settings/widget/ListEdges.java    | 36 +++++++++++++++++++
+ 3 files changed, 51 insertions(+)
+ create mode 100644 src/com/android/settings/widget/ListEdges.java
+
+diff --git a/src/com/android/settings/SettingsPreferenceFragment.java b/src/com/android/settings/SettingsPreferenceFragment.java
+index d652041..60fe670 100644
+--- a/src/com/android/settings/SettingsPreferenceFragment.java
++++ b/src/com/android/settings/SettingsPreferenceFragment.java
+@@ -49,6 +49,7 @@ import com.android.settings.support.actionbar.HelpMenuController;
+ import com.android.settings.support.actionbar.HelpResourceProvider;
+ import com.android.settings.widget.GlassGroupDecoration;
+ import com.android.settings.widget.HighlightablePreferenceGroupAdapter;
++import com.android.settings.widget.ListEdges;
+ import com.android.settings.widget.LoadingViewController;
+ import com.android.settingslib.CustomDialogPreferenceCompat;
+ import com.android.settingslib.CustomEditTextPreferenceCompat;
+@@ -209,6 +210,7 @@ public abstract class SettingsPreferenceFragment extends InstrumentedPreferenceF
+         // RavenOS: preferences sit in glass cards, which draw their own separators.
+         setDivider(null);
+         new GlassGroupDecoration(getContext(), getGlassGroupStartKeys()).attachTo(getListView());
++        ListEdges.apply(getListView());
+     }
+ 
+     /**
+diff --git a/src/com/android/settings/homepage/SettingsHomepageActivity.java b/src/com/android/settings/homepage/SettingsHomepageActivity.java
+index 42a8ffb..12edbdb 100644
+--- a/src/com/android/settings/homepage/SettingsHomepageActivity.java
++++ b/src/com/android/settings/homepage/SettingsHomepageActivity.java
+@@ -24,6 +24,7 @@ import android.graphics.Rect;
+ import android.util.Log;
+ import android.view.KeyEvent;
+ import android.view.View;
++import android.view.ViewGroup;
+ import android.widget.FrameLayout;
+ import android.widget.ImageView;
+ import android.widget.Toolbar;
+@@ -44,6 +45,7 @@ import com.android.settings.homepage.contextualcards.ContextualCardsFragment;
+ import com.android.settings.overlay.FeatureFactory;
+ import com.android.settings.widget.GlassGroupDecoration;
+ import com.android.settings.widget.GlowBackdrop;
++import com.android.settings.widget.ListEdges;
+ import com.android.settings.widget.NavigationSound;
+ 
+ import java.util.ArrayList;
+@@ -87,6 +89,17 @@ public class SettingsHomepageActivity extends FragmentActivity {
+         final NestedScrollView scroller = findViewById(R.id.main_content_scrollable_container);
+         scroller.setOnScrollChangeListener((NestedScrollView.OnScrollChangeListener)
+                 (v, x, y, oldX, oldY) -> followScroll(appBar, y));
++        // RavenOS: the homepage lays out behind the navigation bar; end the list above it.
++        ListEdges.apply(scroller);
++        root.setOnApplyWindowInsetsListener((v, insets) -> {
++            final ViewGroup.MarginLayoutParams lp =
++                    (ViewGroup.MarginLayoutParams) scroller.getLayoutParams();
++            if (lp.bottomMargin != insets.getSystemWindowInsetBottom()) {
++                lp.bottomMargin = insets.getSystemWindowInsetBottom();
++                scroller.setLayoutParams(lp);
++            }
++            return v.onApplyWindowInsets(insets);
++        });
+         // RavenOS: outline the search pill in the accent while a remote has it focused.
+         final MaterialCardView searchCard = findViewById(R.id.search_bar);
+         final int cardStroke = searchCard.getStrokeColor();
+diff --git a/src/com/android/settings/widget/ListEdges.java b/src/com/android/settings/widget/ListEdges.java
+new file mode 100644
+index 0000000..ae4a468
+--- /dev/null
++++ b/src/com/android/settings/widget/ListEdges.java
+@@ -0,0 +1,36 @@
++/*
++ * SPDX-FileCopyrightText: 2026 RavenOS
++ * SPDX-License-Identifier: Apache-2.0
++ */
++
++package com.android.settings.widget;
++
++import android.view.View;
++import android.view.ViewGroup;
++
++/**
++ * Makes a scrolling list end cleanly on the glass backdrop. Theme.Settings turns off child
++ * clipping, so rows and cards used to draw past the list into the transparent navigation bar
++ * and under the action bar, looking sliced. The list is clipped to its own bounds instead, and
++ * content that continues past an edge fades out over the last 48dp.
++ */
++public final class ListEdges {
++
++    private static final int FADE_DP = 48;
++
++    private ListEdges() {
++    }
++
++    public static void apply(View list) {
++        if (list instanceof ViewGroup) {
++            ((ViewGroup) list).setClipChildren(true);
++        }
++        if (list.getParent() instanceof ViewGroup) {
++            // Also clips what the list draws itself, such as the glass cards.
++            ((ViewGroup) list.getParent()).setClipChildren(true);
++        }
++        list.setVerticalFadingEdgeEnabled(true);
++        list.setFadingEdgeLength(Math.round(FADE_DP * list.getResources()
++                .getDisplayMetrics().density));
++    }
++}
+-- 
+2.53.0
+

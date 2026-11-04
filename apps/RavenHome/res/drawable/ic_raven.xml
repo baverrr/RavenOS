@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- RavenOS mark: a raven in profile, facing left. Same path as the boot animation. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF0B0D10"
+        android:pathData="M0,0h24v24h-24z" />
+    <path
+        android:fillColor="#FFF2F2F2"
+        android:pathData="M2,8.2C3.5,7.2 5,6.4 6.6,5.9C8,5.2 9.8,5 11,5.9C12.6,7.2 15,9 17.5,10.9C19.3,12.3 21.4,14 23,15.6L22.1,17C20.4,16.3 18.8,15.6 17.3,15.1C15.8,16 13.6,16.4 11.6,16C9.4,15.5 7.9,13.9 7.3,11.9L6.6,10.6L6.9,10.2L6.2,9.8C5,9.3 3.5,8.8 2,8.2Z M11.2,15.6h0.6v3h-0.6z M12.9,15.7h0.6v2.9h-0.6z" />
+    <path
+        android:fillColor="#FF0B0D10"
+        android:pathData="M8.6,7.1m-0.45,0a0.45,0.45 0,1 1,0.9 0a0.45,0.45 0,1 1,-0.9 0" />
+</vector>
