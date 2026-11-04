@@ -1,7 +1,7 @@
 From f676cff428d9cc44378afdb0d2c87cf0556b5be5 Mon Sep 17 00:00:00 2001
 From: baverrr <342259467+baverrr@users.noreply.github.com>
 Date: Mon, 2 Nov 2026 21:38:43 -0700
-Subject: [PATCH 3/5] RavenOS: Add reminders, a sleep screen and a
+Subject: [PATCH 3/9] RavenOS: Add reminders, a sleep screen and a
  voice-controlled alarm
 
 Add three skills, English only for now, sharing one alert system:

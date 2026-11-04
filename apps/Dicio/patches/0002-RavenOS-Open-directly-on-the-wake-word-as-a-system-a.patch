@@ -1,7 +1,7 @@
 From bde37da4d63e37f0c6629a3e731e08a0420c3ab3 Mon Sep 17 00:00:00 2001
 From: baverrr <342259467+baverrr@users.noreply.github.com>
 Date: Mon, 2 Nov 2026 20:35:55 -0700
-Subject: [PATCH 2/5] RavenOS: Open directly on the wake word as a system app
+Subject: [PATCH 2/9] RavenOS: Open directly on the wake word as a system app
 
 When Dicio holds START_ACTIVITIES_FROM_BACKGROUND (granted to it as a
 privileged app on RavenOS), open the assistant as soon as the wake word

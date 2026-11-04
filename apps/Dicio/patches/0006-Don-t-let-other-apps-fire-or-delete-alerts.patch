@@ -1,0 +1,32 @@
+From 194a917e419cef957ddb9161959638f2810ef3a6 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 23:50:22 -0700
+Subject: [PATCH 6/9] Don't let other apps fire or delete alerts
+
+AlertReceiver was exported for its boot and update broadcasts, so any app could send it ACTION_FIRE with a small sequential id and ring or delete a reminder or the wake alarm. It is no longer exported; the system still delivers its broadcasts.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ app/src/main/AndroidManifest.xml | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/app/src/main/AndroidManifest.xml b/app/src/main/AndroidManifest.xml
+index eab1f2c..7de55a6 100644
+--- a/app/src/main/AndroidManifest.xml
++++ b/app/src/main/AndroidManifest.xml
+@@ -133,9 +133,11 @@
+             android:excludeFromRecents="true"
+             android:taskAffinity="org.stypox.dicio.alerts" />
+ 
++        <!-- Not exported: the system still delivers its boot and update broadcasts, but other
++             apps can't send ACTION_FIRE to ring or delete alerts. -->
+         <receiver
+             android:name=".alerts.AlertReceiver"
+-            android:exported="true">
++            android:exported="false">
+             <intent-filter>
+                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+-- 
+2.53.0
+

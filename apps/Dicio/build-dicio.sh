@@ -8,13 +8,16 @@
 #   bash vendor/ravenos/apps/Dicio/build-dicio.sh --export   # also refresh patches/ from the fork
 #
 # The fork is upstream Dicio at $UPSTREAM_COMMIT plus patches/*.patch. If $DICIO_SRC doesn't
-# exist it is recreated from those. Building runs in Docker (build/Dockerfile), which accepts
+# exist it is recreated from those. Before building, the script checks that the fork carries
+# exactly the patches in this folder, so a stale fork can't overwrite Dicio.apk; commit new
+# work in the fork and use --export, or rebuild the fork from the patches.
+# DICIO_SRC and DICIO_GRADLE_HOME override where the fork and Gradle's cache live. Building runs in Docker (build/Dockerfile), which accepts
 # the Android SDK License Agreement.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DICIO_SRC="${DICIO_SRC:-/mnt/ssd/ravenos-dicio}"
-GRADLE_HOME="${DICIO_GRADLE_HOME:-/mnt/ssd/ravenos-dicio-gradle}"
+DICIO_SRC="${DICIO_SRC:-/mnt/media/ravenos/dicio-src}"
+GRADLE_HOME="${DICIO_GRADLE_HOME:-/mnt/media/ravenos/dicio-gradle}"
 UPSTREAM=https://github.com/Stypox/dicio-android
 UPSTREAM_COMMIT=3d1c15434f1cae94670dead51cfb127bb4f16705
 IMAGE=ravenos-dicio-build
@@ -27,11 +30,36 @@ if [ ! -d "$DICIO_SRC/.git" ]; then
     git -C "$DICIO_SRC" am "$HERE"/patches/*.patch
 fi
 
+# One patch-id per patch, in order: the change itself, whatever the commit metadata.
+repo_ids() {
+    local p
+    for p in "$HERE"/patches/*.patch; do
+        git -C "$DICIO_SRC" patch-id --stable < "$p" | cut -d' ' -f1
+    done
+}
+fork_ids() {
+    git -C "$DICIO_SRC" format-patch --stdout "$UPSTREAM_COMMIT"..HEAD \
+        | git -C "$DICIO_SRC" patch-id --stable | cut -d' ' -f1
+}
+
 if [ "${1:-}" = "--export" ]; then
+    # Refuse to drop a patch the fork doesn't carry (e.g. one pulled into this repo since).
+    missing=$(comm -23 <(repo_ids | sort) <(fork_ids | sort))
+    if [ -n "$missing" ]; then
+        echo "The fork in $DICIO_SRC lacks patches that are in $HERE/patches; apply them first." >&2
+        exit 1
+    fi
+    tmp=$(mktemp -d)
+    git -C "$DICIO_SRC" format-patch -q "$UPSTREAM_COMMIT" -o "$tmp"
     rm -f "$HERE"/patches/*.patch
     mkdir -p "$HERE/patches"
-    git -C "$DICIO_SRC" format-patch -q "$UPSTREAM_COMMIT" -o "$HERE/patches"
+    mv "$tmp"/*.patch "$HERE/patches/"
+    rmdir "$tmp"
     echo "=== exported $(ls "$HERE"/patches | wc -l) patches"
+elif [ "$(repo_ids)" != "$(fork_ids)" ]; then
+    echo "The fork in $DICIO_SRC doesn't match $HERE/patches." >&2
+    echo "Export the fork's commits with --export, or move the fork away to recreate it." >&2
+    exit 1
 fi
 
 echo "=== building"

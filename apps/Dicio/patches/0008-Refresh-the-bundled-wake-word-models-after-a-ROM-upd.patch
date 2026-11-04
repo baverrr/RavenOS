@@ -1,0 +1,69 @@
+From b7d63ac9aa63a9aa0bf3c05066f84d9c6a969094 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 23:50:22 -0700
+Subject: [PATCH 8/9] Refresh the bundled wake word models after a ROM update
+
+A system app's update time comes from the image's fixed 2009 file timestamps, so copied models always looked newer and a retrained Hey Raven never reached a dirty-flashed device. Copy them again whenever the version code, update time or build fingerprint changes.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../dicio/io/wake/oww/OpenWakeWordDevice.kt   | 21 +++++++++++++++----
+ 1 file changed, 17 insertions(+), 4 deletions(-)
+
+diff --git a/app/src/main/kotlin/org/stypox/dicio/io/wake/oww/OpenWakeWordDevice.kt b/app/src/main/kotlin/org/stypox/dicio/io/wake/oww/OpenWakeWordDevice.kt
+index 01b4514..2de930b 100644
+--- a/app/src/main/kotlin/org/stypox/dicio/io/wake/oww/OpenWakeWordDevice.kt
++++ b/app/src/main/kotlin/org/stypox/dicio/io/wake/oww/OpenWakeWordDevice.kt
+@@ -2,6 +2,7 @@ package org.stypox.dicio.io.wake.oww
+ 
+ import android.content.Context
+ import android.net.Uri
++import android.os.Build
+ import android.util.Log
+ import dagger.hilt.android.qualifiers.ApplicationContext
+ import kotlinx.coroutines.CoroutineScope
+@@ -37,8 +38,16 @@ class OpenWakeWordDevice(
+         // wakeFile is not needed if we want to use the userWakeFile instead
+         if (userWakeFileExists) listOf(melFile, embFile)
+         else listOf(melFile, embFile, wakeFile)
+-    private val apkUpdateTime = appContext.packageManager
+-        .getPackageInfo(appContext.packageName, 0).lastUpdateTime
++    /**
++     * Identifies the APK the bundled models came from. A system app's update time comes from
++     * the image's fixed file timestamps, so it can't tell a new ROM build from the old one;
++     * the build fingerprint changes with every RavenOS build, and the version code and update
++     * time cover updates installed over the system app.
++     */
++    private val bundleStamp = appContext.packageManager
++        .getPackageInfo(appContext.packageName, 0)
++        .let { "${it.longVersionCode}|${it.lastUpdateTime}|${Build.FINGERPRINT}" }
++    private val stampFile = File(owwFolder, "bundle.stamp")
+ 
+     private class BundledModel(val asset: String, val file: File)
+ 
+@@ -62,9 +71,10 @@ class OpenWakeWordDevice(
+ 
+     private fun copyBundledModels() {
+         owwFolder.mkdirs()
++        // Copy again after an APK or ROM update, which may bring a retrained model.
++        val upToDate = stampFile.exists() && stampFile.readText() == bundleStamp
+         for (model in allModelFiles) {
+-            // Copy again after an APK update, which may bring a retrained model.
+-            if (model.file.exists() && model.file.lastModified() >= apkUpdateTime) {
++            if (upToDate && model.file.exists()) {
+                 continue
+             }
+             val partialFile = File(owwFolder, model.file.name + ".part")
+@@ -75,6 +85,9 @@ class OpenWakeWordDevice(
+                 throw IOException("Cannot rename partial file $partialFile to ${model.file}")
+             }
+         }
++        if (!upToDate) {
++            stampFile.writeText(bundleStamp)
++        }
+     }
+ 
+     override fun download() {
+-- 
+2.53.0
+

@@ -50,7 +50,9 @@ Raven", so the microphone can hear "turn off" over it. Alarms and reminders surv
 ### Dicio
 
 The fork is upstream Dicio at a pinned commit plus `apps/Dicio/patches/`. Its working copy is
-`/mnt/ssd/ravenos-dicio` (branch `ravenos`).
+`/mnt/media/ravenos/dicio-src` (branch `ravenos`) and Gradle's cache is
+`/mnt/media/ravenos/dicio-gradle`; set `DICIO_SRC` and `DICIO_GRADLE_HOME` to use other folders.
+If the folder doesn't exist, the script recreates the fork from the patches.
 
 ```bash
 bash vendor/ravenos/apps/Dicio/build-dicio.sh            # build, refresh Dicio.apk and Android.mk
@@ -58,7 +60,9 @@ bash vendor/ravenos/apps/Dicio/build-dicio.sh --export   # also save the fork's 
 ```
 
 It builds in Docker (`apps/Dicio/build/Dockerfile`: JDK 21 and 17, Android SDK 36), which
-accepts the Android SDK License Agreement.
+accepts the Android SDK License Agreement. Before building, it checks that the fork carries
+exactly the patches in `apps/Dicio/patches/`, so a stale fork can't overwrite `Dicio.apk`. Commit
+new work in the fork and use `--export`, which refuses to drop a patch the fork lacks.
 
 ### The "Hey Raven" model
 
@@ -67,7 +71,8 @@ bash vendor/ravenos/tools/wakeword/train.sh            # all steps
 bash vendor/ravenos/tools/wakeword/train.sh train      # resume from a step: image, data, generate, augment, train, convert
 ```
 
-It downloads about 20 GB of training data to `/mnt/ssd/ravenos-wakeword` and trains on the CPU
+It downloads about 20 GB of training data to `/mnt/media/ravenos/wakeword` (set `WAKEWORD_DATA`
+to change it) and trains on the CPU
 in Docker, taking a few hours. Settings are in `tools/wakeword/hey_raven.yml`, including the
 look-alike phrases ("hey ray", "heaven", "hey dicio", …) it learns to ignore. The result lands in
 `wakeword/hey_raven.tflite`; copy it into the fork's `app/src/main/assets/openWakeWord/` and

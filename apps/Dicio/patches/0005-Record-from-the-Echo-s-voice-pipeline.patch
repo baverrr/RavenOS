@@ -1,7 +1,7 @@
 From 9a8a9d0cc591920b6c312921f7dcb49a5d71de6f Mon Sep 17 00:00:00 2001
 From: baverrr <342259467+baverrr@users.noreply.github.com>
 Date: Tue, 3 Nov 2026 11:27:13 -0700
-Subject: [PATCH 5/5] Record from the Echo's voice pipeline
+Subject: [PATCH 5/9] Record from the Echo's voice pipeline
 
 On the Echo Show the VOICE_RECOGNITION capture pipeline beamforms but
 applies no gain, so speech reached the wake word and Vosk about 20 dB

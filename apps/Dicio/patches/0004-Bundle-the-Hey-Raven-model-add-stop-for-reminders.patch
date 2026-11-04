@@ -1,7 +1,7 @@
 From 40f3ae98e5080572d382b86f5d06a907ee915f7d Mon Sep 17 00:00:00 2001
 From: baverrr <342259467+baverrr@users.noreply.github.com>
 Date: Tue, 3 Nov 2026 09:45:34 -0700
-Subject: [PATCH 4/5] Bundle the Hey Raven model; add "stop" for reminders
+Subject: [PATCH 4/9] Bundle the Hey Raven model; add "stop" for reminders
 
 - Bundle the openWakeWord melspectrogram, embedding and hey_raven models
   in assets/openWakeWord, so the wake word works without a download.

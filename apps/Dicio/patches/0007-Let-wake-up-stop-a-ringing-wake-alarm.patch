@@ -1,0 +1,33 @@
+From 75308b3d17d397655ba6847fc4a8ee32aa5d7531 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 23:50:22 -0700
+Subject: [PATCH 7/9] Let "wake up" stop a ringing wake alarm
+
+When the wake alarm goes off it has already left the stored list, so "wake up", "I am awake" or "good morning" answered that you were already awake and the alarm kept ringing. Turn off a ringing wake alarm first.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../main/kotlin/org/stypox/dicio/skills/sleep/SleepSkill.kt   | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/app/src/main/kotlin/org/stypox/dicio/skills/sleep/SleepSkill.kt b/app/src/main/kotlin/org/stypox/dicio/skills/sleep/SleepSkill.kt
+index 440fc2e..bd3a4d4 100644
+--- a/app/src/main/kotlin/org/stypox/dicio/skills/sleep/SleepSkill.kt
++++ b/app/src/main/kotlin/org/stypox/dicio/skills/sleep/SleepSkill.kt
+@@ -67,10 +67,12 @@ class SleepSkill(
+     private fun wakeUp(ctx: SkillContext): SkillOutput {
+         val wasSleeping = Alerts.sleeping.value
+         Alerts.setSleeping(false)
++        // A wake alarm that is going off has already left the stored list, so stop it here.
++        val wasRinging = Alerts.ringing.value?.kind == AlertKind.WAKE && Alerts.turnOff()
+         val alarms = Alerts.all(ctx.android).filter { it.kind == AlertKind.WAKE }
+         alarms.forEach { Alerts.remove(ctx.android, it) }
+         return AlertSpeechOutput(ctx.getString(
+-            if (alarms.isNotEmpty()) R.string.skill_sleep_awake_alarm_off
++            if (wasRinging || alarms.isNotEmpty()) R.string.skill_sleep_awake_alarm_off
+             else if (wasSleeping) R.string.skill_sleep_awake
+             else R.string.skill_sleep_not_sleeping
+         ))
+-- 
+2.53.0
+

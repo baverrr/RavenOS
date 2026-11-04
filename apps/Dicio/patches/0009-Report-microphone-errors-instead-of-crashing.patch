@@ -1,0 +1,41 @@
+From 07d429ab765400c5d665cccaef41eb35135d6884 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 23:50:22 -0700
+Subject: [PATCH 9/9] Report microphone errors instead of crashing
+
+When recording couldn't start, the recognizer kept reading and then threw, which killed the whole app, wake word and a ringing alert included. Report the error and stop the recognizer instead.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../org/stypox/dicio/io/input/vosk/MicSpeechService.kt    | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/MicSpeechService.kt b/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/MicSpeechService.kt
+index 945d3f7..b89ccd2 100644
+--- a/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/MicSpeechService.kt
++++ b/app/src/main/kotlin/org/stypox/dicio/io/input/vosk/MicSpeechService.kt
+@@ -93,6 +93,7 @@ class MicSpeechService(private val recognizer: Recognizer, sampleRate: Float) {
+                 recorder.stop()
+                 val e = IOException("Failed to start recording. Microphone might be already in use.")
+                 mainHandler.post { listener.onError(e) }
++                return
+             }
+ 
+             val buffer = ShortArray(bufferSize)
+@@ -106,7 +107,12 @@ class MicSpeechService(private val recognizer: Recognizer, sampleRate: Float) {
+                     reset = false
+                 }
+                 if (nread < 0) {
+-                    throw RuntimeException("error reading audio buffer")
++                    // Throwing here would kill the whole app, wake word and ringing alerts
++                    // included, so report it and stop this recognizer instead.
++                    recorder.stop()
++                    val e = IOException("Error reading audio buffer ($nread)")
++                    mainHandler.post { listener.onError(e) }
++                    return
+                 }
+                 if (recognizer.acceptWaveForm(buffer, nread)) {
+                     val result = recognizer.result
+-- 
+2.53.0
+
