@@ -105,18 +105,15 @@ packages/apps/Settings/res/values/raven_glass.xml   packages/inputmethods/LatinI
 - **Saved keyboard choice wins.** If a theme was picked in the keyboard's settings before, that
   choice is kept; select RavenOS Glass there once.
 
-## Planned for the next build
-
-### Touch glow (requested 2 November 2026)
+## Touch glow
 
 When the screen is touched, the warm glow in the backdrop moves to the finger and follows it
 around, then fades where the finger lifted. Part of the theme as a whole; Obsidian's is a warm
 amber.
 
-**Status:** written and committed for Settings (`patches/packages/apps/Settings/0007`), its
-search page (`SettingsIntelligence/0002`) and the keyboard (`LatinIME/0002`); not built or
-tried on the Echo yet. RavenHome, EchoParts, LineageParts, PermissionController and DocumentsUI
-follow with copies of the same class. Whether the Quick Settings panel gets it is still open.
+It ships in Settings, its search page, the keyboard, RavenHome, EchoParts, LineageParts,
+PermissionController and DocumentsUI, each with a copy of the same class (see CHANGELOG.md).
+Quick Settings doesn't have it.
 
 How it works:
 
@@ -133,4 +130,6 @@ How it works:
 - **Why not one system-wide overlay.** An overlay window from SystemUI could follow touches in
   every app, but it would draw *over* the content, not behind it, and catching touches system-
   wide needs privileged input monitoring.
-- **Cost.** One radial gradient redrawn while a finger is down; nothing redraws otherwise.
+- **Cost.** One radial gradient, built once per window size and moved with the canvas, redrawn
+  while a finger is down; nothing redraws otherwise. The animation stops if the window or
+  keyboard goes away mid-touch.

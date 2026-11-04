@@ -1,0 +1,98 @@
+From 5f94a5e8b1d8a3496d604b9f9993d486e0849bc9 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 23:49:48 -0700
+Subject: [PATCH] LatinIME: Draw the touch glow without a new shader every
+ frame
+
+The glow's gradient is built once per size and moved with the canvas, so the keyboard no longer allocates a shader on every frame while a finger is down. The glow also stops when the keyboard view detaches mid-touch.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: Ibc8eaeda226ef49ea13c14a697ff78654a708c06
+---
+ .../inputmethod/keyboard/GlowBackdrop.java    | 33 ++++++++++++++-----
+ .../keyboard/MainKeyboardView.java            |  4 +++
+ 2 files changed, 29 insertions(+), 8 deletions(-)
+
+diff --git a/java/src/com/android/inputmethod/keyboard/GlowBackdrop.java b/java/src/com/android/inputmethod/keyboard/GlowBackdrop.java
+index f146e63..a6cfa9a 100644
+--- a/java/src/com/android/inputmethod/keyboard/GlowBackdrop.java
++++ b/java/src/com/android/inputmethod/keyboard/GlowBackdrop.java
+@@ -60,6 +60,9 @@ public class GlowBackdrop extends Drawable implements TimeAnimator.TimeListener
+     private float mTargetY;
+     private float mStrength;
+     private boolean mTouching;
++    /** The glow at full strength, centred on 0,0; rebuilt only when the size changes. */
++    private RadialGradient mShader;
++    private float mRadius;
+ 
+     public GlowBackdrop(Drawable base, int color) {
+         mBase = base;
+@@ -135,21 +138,33 @@ public class GlowBackdrop extends Drawable implements TimeAnimator.TimeListener
+     @Override
+     public void draw(Canvas canvas) {
+         mBase.draw(canvas);
+-        if (mStrength <= 0f || Float.isNaN(mX)) {
++        if (mStrength <= 0f || Float.isNaN(mX) || mShader == null) {
+             return;
+         }
+-        final Rect bounds = getBounds();
+-        final float radius = RADIUS_FRACTION * Math.min(bounds.width(), bounds.height());
+-        final int alpha = Math.round((mColor >>> 24) * mStrength);
+-        final int center = (alpha << 24) | (mColor & 0xFFFFFF);
+-        mPaint.setShader(new RadialGradient(mX, mY, radius,
+-                new int[] {center, center & 0xFFFFFF}, null, Shader.TileMode.CLAMP));
+-        canvas.drawCircle(mX, mY, radius, mPaint);
++        // Move and fade the one gradient instead of allocating a new shader every frame.
++        mPaint.setAlpha(Math.round(255 * mStrength));
++        final int save = canvas.save();
++        canvas.translate(mX, mY);
++        canvas.drawCircle(0f, 0f, mRadius, mPaint);
++        canvas.restoreToCount(save);
+     }
+ 
+     @Override
+     protected void onBoundsChange(Rect bounds) {
+         mBase.setBounds(bounds);
++        mRadius = RADIUS_FRACTION * Math.min(bounds.width(), bounds.height());
++        mShader = mRadius > 0f
++                ? new RadialGradient(0f, 0f, mRadius, new int[] {mColor, mColor & 0xFFFFFF},
++                        null, Shader.TileMode.CLAMP)
++                : null;
++        mPaint.setShader(mShader);
++    }
++
++    /** Stops the animation and hides the glow, such as when the window goes away mid-touch. */
++    public void stop() {
++        mTouching = false;
++        mStrength = 0f;
++        mAnimator.end();
+     }
+ 
+     @Override
+@@ -255,6 +270,8 @@ public class GlowBackdrop extends Drawable implements TimeAnimator.TimeListener
+ 
+         @Override
+         public void onDetachedFromWindow() {
++            // No ACTION_UP or CANCEL may follow, which would leave the animator running.
++            mGlow.stop();
+             mWrapped.onDetachedFromWindow();
+         }
+ 
+diff --git a/java/src/com/android/inputmethod/keyboard/MainKeyboardView.java b/java/src/com/android/inputmethod/keyboard/MainKeyboardView.java
+index e140fdc..3d60692 100644
+--- a/java/src/com/android/inputmethod/keyboard/MainKeyboardView.java
++++ b/java/src/com/android/inputmethod/keyboard/MainKeyboardView.java
+@@ -604,6 +604,10 @@ public final class MainKeyboardView extends KeyboardView implements DrawingProxy
+     protected void onDetachedFromWindow() {
+         super.onDetachedFromWindow();
+         mDrawingPreviewPlacerView.removeAllViews();
++        if (mGlowBackdrop != null) {
++            // The keyboard can be hidden mid-touch, with no ACTION_UP to end the glow.
++            mGlowBackdrop.stop();
++        }
+     }
+ 
+     // Implements {@link DrawingProxy@showMoreKeysKeyboard(Key,PointerTracker)}.
+-- 
+2.53.0
+

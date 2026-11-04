@@ -1,0 +1,39 @@
+From ea0eaf776cc16ff7ebebf552ce460a3e7d2102f3 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 23:49:48 -0700
+Subject: [PATCH 5/6] LineageParts: Don't crash on screens without a preference
+ list
+
+The profile setup screens inflate their own layout and have no preference list, so adding the glass card decoration threw a NullPointerException when adding or editing a profile.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I9ccd6f4bf5dca438591f6013b7644d3c5a466dbd
+---
+ .../lineageparts/SettingsPreferenceFragment.java       | 10 ++++++++--
+ 1 file changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/src/org/lineageos/lineageparts/SettingsPreferenceFragment.java b/src/org/lineageos/lineageparts/SettingsPreferenceFragment.java
+index c892b89..dee2609 100644
+--- a/src/org/lineageos/lineageparts/SettingsPreferenceFragment.java
++++ b/src/org/lineageos/lineageparts/SettingsPreferenceFragment.java
+@@ -139,9 +139,15 @@ public abstract class SettingsPreferenceFragment extends PreferenceFragment
+     @Override
+     public void onViewCreated(View view, Bundle savedInstanceState) {
+         super.onViewCreated(view, savedInstanceState);
+-        // RavenOS: preferences sit in glass cards, which draw their own separators.
++        // RavenOS: preferences sit in glass cards, which draw their own separators. Fragments
++        // that inflate their own layout in onCreateView (the profile setup screens) have no
++        // preference list, so leave them alone.
++        final RecyclerView list = getListView();
++        if (list == null) {
++            return;
++        }
+         setDivider(null);
+-        new GlassGroupDecoration(getContext(), getGlassGroupStartKeys()).attachTo(getListView());
++        new GlassGroupDecoration(getContext(), getGlassGroupStartKeys()).attachTo(list);
+     }
+ 
+     /**
+-- 
+2.53.0
+

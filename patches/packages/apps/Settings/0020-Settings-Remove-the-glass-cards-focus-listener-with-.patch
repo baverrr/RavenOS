@@ -1,0 +1,57 @@
+From cedb206853345e7db9fb94181f15efee97decb0d Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 23:49:47 -0700
+Subject: [PATCH 20/22] Settings: Remove the glass cards' focus listener with
+ their list
+
+The focus listener sat on the window's view tree for as long as the activity lived, keeping every replaced fragment's list in memory. It is now added while the list is attached and removed when it detaches.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I17d130f5fe759216df5774392950e33929a17d93
+---
+ .../settings/widget/GlassGroupDecoration.java | 22 +++++++++++++++++--
+ 1 file changed, 20 insertions(+), 2 deletions(-)
+
+diff --git a/src/com/android/settings/widget/GlassGroupDecoration.java b/src/com/android/settings/widget/GlassGroupDecoration.java
+index 0c58fd2..c3670a5 100644
+--- a/src/com/android/settings/widget/GlassGroupDecoration.java
++++ b/src/com/android/settings/widget/GlassGroupDecoration.java
+@@ -17,6 +17,7 @@ import android.graphics.RectF;
+ import android.graphics.drawable.Drawable;
+ import android.graphics.drawable.RippleDrawable;
+ import android.view.View;
++import android.view.ViewTreeObserver;
+ 
+ import androidx.preference.Preference;
+ import androidx.preference.PreferenceCategory;
+@@ -108,8 +109,25 @@ public class GlassGroupDecoration extends RecyclerView.ItemDecoration {
+             }
+         });
+         // A row's own redraw doesn't redraw decorations, so follow focus moves explicitly.
+-        list.getViewTreeObserver().addOnGlobalFocusChangeListener(
+-                (oldFocus, newFocus) -> list.invalidate());
++        // The listener lives on the window's tree, so take it off when the list leaves the
++        // window; otherwise every replaced fragment's list stays referenced until the activity
++        // is destroyed.
++        final ViewTreeObserver.OnGlobalFocusChangeListener focusListener =
++                (oldFocus, newFocus) -> list.invalidate();
++        list.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
++            @Override
++            public void onViewAttachedToWindow(View v) {
++                v.getViewTreeObserver().addOnGlobalFocusChangeListener(focusListener);
++            }
++
++            @Override
++            public void onViewDetachedFromWindow(View v) {
++                v.getViewTreeObserver().removeOnGlobalFocusChangeListener(focusListener);
++            }
++        });
++        if (list.isAttachedToWindow()) {
++            list.getViewTreeObserver().addOnGlobalFocusChangeListener(focusListener);
++        }
+     }
+ 
+     /** Side margin that centres content in a column no wider than raven_content_max_width. */
+-- 
+2.53.0
+

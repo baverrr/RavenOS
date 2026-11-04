@@ -1,0 +1,59 @@
+From fc9b7089eae3d372b82b9c8c3cda28b5bf8e02c6 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 23:49:47 -0700
+Subject: [PATCH 22/22] Settings: Rename the Security entry only where
+ encryption is unsupported
+
+The XML keeps the stock Encryption & credentials title and summary, so search and devices that can encrypt are unchanged. The controller still renames the entry to Credentials at runtime when ro.crypto.state=unsupported.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Change-Id: I40c4f56740752b2e8be4dbce295f96564860720f
+---
+ res/xml/encryption_and_credential.xml                         | 2 +-
+ res/xml/security_dashboard_settings.xml                       | 4 ++--
+ .../security/EncryptionStatusPreferenceController.java        | 1 -
+ 3 files changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/res/xml/encryption_and_credential.xml b/res/xml/encryption_and_credential.xml
+index a88b85c..fe0498d 100644
+--- a/res/xml/encryption_and_credential.xml
++++ b/res/xml/encryption_and_credential.xml
+@@ -17,7 +17,7 @@
+ <PreferenceScreen
+     xmlns:android="http://schemas.android.com/apk/res/android"
+     xmlns:settings="http://schemas.android.com/apk/res-auto"
+-    android:title="@string/credentials_title">
++    android:title="@string/encryption_and_credential_settings_title">
+ 
+     <PreferenceCategory
+         android:key="encryption_and_credentials_status_category"
+diff --git a/res/xml/security_dashboard_settings.xml b/res/xml/security_dashboard_settings.xml
+index 54f448f..b5dcebf 100644
+--- a/res/xml/security_dashboard_settings.xml
++++ b/res/xml/security_dashboard_settings.xml
+@@ -129,8 +129,8 @@
+     <Preference
+         android:order="60"
+         android:key="encryption_and_credential"
+-        android:title="@string/credentials_title"
+-        android:summary="@string/user_credentials_summary"
++        android:title="@string/encryption_and_credential_settings_title"
++        android:summary="@string/encryption_and_credential_settings_summary"
+         android:fragment="com.android.settings.security.EncryptionAndCredential" />
+ 
+     <Preference
+diff --git a/src/com/android/settings/security/EncryptionStatusPreferenceController.java b/src/com/android/settings/security/EncryptionStatusPreferenceController.java
+index 8427902..a2857ee 100644
+--- a/src/com/android/settings/security/EncryptionStatusPreferenceController.java
++++ b/src/com/android/settings/security/EncryptionStatusPreferenceController.java
+@@ -66,7 +66,6 @@ public class EncryptionStatusPreferenceController extends BasePreferenceControll
+                 preference.setSummary(R.string.user_credentials_summary);
+                 return;
+             }
+-            preference.setTitle(R.string.encryption_and_credential_settings_title);
+         }
+         final boolean encryptionEnabled = LockPatternUtils.isDeviceEncryptionEnabled();
+         if (encryptionEnabled) {
+-- 
+2.53.0
+

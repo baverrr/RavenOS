@@ -1,0 +1,81 @@
+From 7fe24ab48adb774df54c5773f8a448d0dca67ba1 Mon Sep 17 00:00:00 2001
+From: baverrr <342259467+baverrr@users.noreply.github.com>
+Date: Tue, 3 Nov 2026 23:49:48 -0700
+Subject: [PATCH] EchoParts: Draw the touch glow without a new shader every
+ frame
+
+The glow's gradient is built once per size and moved with the canvas. The animator also stops when the window goes away before the finger lifts.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../org/lineageos/echoparts/GlowBackdrop.java | 33 ++++++++++++++-----
+ 1 file changed, 25 insertions(+), 8 deletions(-)
+
+diff --git a/EchoParts/src/org/lineageos/echoparts/GlowBackdrop.java b/EchoParts/src/org/lineageos/echoparts/GlowBackdrop.java
+index 9831dde..ac84674 100644
+--- a/EchoParts/src/org/lineageos/echoparts/GlowBackdrop.java
++++ b/EchoParts/src/org/lineageos/echoparts/GlowBackdrop.java
+@@ -59,6 +59,9 @@ public class GlowBackdrop extends Drawable implements TimeAnimator.TimeListener
+     private float mTargetY;
+     private float mStrength;
+     private boolean mTouching;
++    /** The glow at full strength, centred on 0,0; rebuilt only when the size changes. */
++    private RadialGradient mShader;
++    private float mRadius;
+ 
+     public GlowBackdrop(Drawable base, int color) {
+         mBase = base;
+@@ -134,21 +137,33 @@ public class GlowBackdrop extends Drawable implements TimeAnimator.TimeListener
+     @Override
+     public void draw(Canvas canvas) {
+         mBase.draw(canvas);
+-        if (mStrength <= 0f || Float.isNaN(mX)) {
++        if (mStrength <= 0f || Float.isNaN(mX) || mShader == null) {
+             return;
+         }
+-        final Rect bounds = getBounds();
+-        final float radius = RADIUS_FRACTION * Math.min(bounds.width(), bounds.height());
+-        final int alpha = Math.round((mColor >>> 24) * mStrength);
+-        final int center = (alpha << 24) | (mColor & 0xFFFFFF);
+-        mPaint.setShader(new RadialGradient(mX, mY, radius,
+-                new int[] {center, center & 0xFFFFFF}, null, Shader.TileMode.CLAMP));
+-        canvas.drawCircle(mX, mY, radius, mPaint);
++        // Move and fade the one gradient instead of allocating a new shader every frame.
++        mPaint.setAlpha(Math.round(255 * mStrength));
++        final int save = canvas.save();
++        canvas.translate(mX, mY);
++        canvas.drawCircle(0f, 0f, mRadius, mPaint);
++        canvas.restoreToCount(save);
+     }
+ 
+     @Override
+     protected void onBoundsChange(Rect bounds) {
+         mBase.setBounds(bounds);
++        mRadius = RADIUS_FRACTION * Math.min(bounds.width(), bounds.height());
++        mShader = mRadius > 0f
++                ? new RadialGradient(0f, 0f, mRadius, new int[] {mColor, mColor & 0xFFFFFF},
++                        null, Shader.TileMode.CLAMP)
++                : null;
++        mPaint.setShader(mShader);
++    }
++
++    /** Stops the animation and hides the glow, such as when the window goes away mid-touch. */
++    public void stop() {
++        mTouching = false;
++        mStrength = 0f;
++        mAnimator.end();
+     }
+ 
+     @Override
+@@ -254,6 +269,8 @@ public class GlowBackdrop extends Drawable implements TimeAnimator.TimeListener
+ 
+         @Override
+         public void onDetachedFromWindow() {
++            // No ACTION_UP or CANCEL may follow, which would leave the animator running.
++            mGlow.stop();
+             mWrapped.onDetachedFromWindow();
+         }
+ 
+-- 
+2.53.0
+
