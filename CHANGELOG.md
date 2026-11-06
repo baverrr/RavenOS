@@ -27,6 +27,38 @@ Nothing yet.
 
 ## Flashes
 
+### rv2611040020 (4 Nov, 00:20)
+
+Flashed 6 Nov. Fixes from the PR review toolkit review (its own session):
+
+- **Settings crashes fixed** (`packages/apps/Settings` 0019): screens without a preference list
+  (the lock-screen notifications step after setting a lock, Running services, Convert to file
+  encryption) no longer crash.
+- **Settings: no focus-listener leak** (0020), and the Security rename happens only at runtime on
+  devices without encryption, with the XML back to stock (0022).
+- **LineageParts: creating a profile no longer crashes** (`packages/apps/LineageParts` 0005).
+- **Touch glow is lighter:** it reuses its shader instead of making one every frame, and stops
+  when its view is detached. This applies in Settings, LineageParts, SettingsIntelligence,
+  PermissionController, DocumentsUI, LatinIME and EchoParts.
+- **Dicio** (patches 0006–0009):
+  - Other apps can't fire or delete its alerts.
+  - "Hey Raven, wake up" stops a ringing wake alarm.
+  - The wake-word model refreshes after a ROM update.
+  - A microphone error is reported instead of crashing.
+- **RavenHome:** fixes timers that never rang, the per-second relayout, the leap-year label,
+  video-stall recovery, and its exported provider and receiver.
+- **Build scripts:**
+  - `build-ravenos.sh` stops if a patch is missing from its project or the version doesn't match.
+  - `patches/apply.sh` skips patches that are already applied.
+- **First build from /mnt/media:** the kernel's old build folder still pointed at /mnt/ssd, so it
+  was deleted and rebuilt.
+
+To check after flashing:
+- Set a screen lock in Settings.
+- Add a profile in LineageParts.
+- Start two 1-minute timers a second apart; both should ring.
+- Say "Hey Raven, wake up" while a wake alarm rings.
+
 ### rv2611031909 (3 Nov, 19:09)
 
 - **No headphone volume limit** (`overlay/frameworks/base/core/res/res/values/config.xml`):
